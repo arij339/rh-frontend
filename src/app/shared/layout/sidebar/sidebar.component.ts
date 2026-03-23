@@ -461,7 +461,18 @@ export class SidebarComponent {
                       a4 4 0 0 0-4 4v2"/>
              <circle cx="12" cy="7" r="4"/>
            </svg>`
-  }
+  },
+  {
+  label: 'Augmentations',
+  route: '/augmentations',
+  roles: ['EMPLOYE','MANAGER','RH','ADMIN'],
+  icon: `<svg width="20" height="20" fill="none"
+               stroke="currentColor" stroke-width="2"
+               viewBox="0 0 24 24">
+           <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/>
+           <polyline points="17 6 23 6 23 12"/>
+         </svg>`
+},
 ];
 
   getVisibleItems(): NavItem[] {

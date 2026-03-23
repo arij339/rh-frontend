@@ -605,7 +605,7 @@ const IC = {
       --sh-md: 0 6px 24px rgba(11,110,126,0.13);
     }
 
-    .autorisations { max-width: 1100px; padding-bottom: 48px; }
+    .autorisations { max-width: 100%; padding-bottom: 48px; }
 
     /* ── Header ── */
     .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 28px; flex-wrap: wrap; gap: 16px; }

@@ -533,7 +533,7 @@ const IC = {
       --sh-md: 0 6px 24px rgba(11,110,126,0.13);
     }
 
-    .dashboard { max-width: 1200px; padding-bottom: 48px; }
+    .dashboard { max-width:100%; padding-bottom: 48px; }
 
     /* ── Header ── */
     .page-header {

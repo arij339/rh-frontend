@@ -540,7 +540,7 @@ const IC = {
       --sh-md: 0 6px 24px rgba(11,110,126,0.13);
     }
 
-    .profil { max-width: 1100px; padding-bottom: 48px; }
+    .profil { max-width: 100%; padding-bottom: 48px; }
 
     /* ── Hero ── */
     .profil-hero { position: relative; border-radius: 20px; overflow: hidden; margin-bottom: 28px; box-shadow: 0 6px 24px rgba(11,110,126,0.18); }

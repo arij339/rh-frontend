@@ -91,6 +91,13 @@ export const routes: Routes = [
             .then(m => m.AvancesComponent)
       },
       {
+  path: 'augmentations',
+  loadComponent: () =>
+    import('./modules/augmentations/augmentations.component')
+      .then(m => m.AugmentationsComponent),
+  canActivate: [authGuard]
+},
+      {
         path: 'profil',
         loadComponent: () =>
           import('./modules/profil/profil.component')
