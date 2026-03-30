@@ -44,27 +44,71 @@ export const routes: Routes = [
           import('./modules/dashboard/dashboard.component')
             .then(m => m.DashboardComponent)
       },
-      // Analytics ✅ FIX : dans le layout
+      // Analytics
       {
         path: 'analytics',
         loadComponent: () =>
           import('./modules/analytics/analytics.component')
             .then(m => m.AnalyticsComponent)
       },
-      // Admin
+
+      // ===== ADMIN — pages séparées =====
       {
         path: 'admin',
-        loadComponent: () =>
-          import('./modules/admin/admin.component')
-            .then(m => m.AdminComponent)
+        redirectTo: 'admin/dashboard',
+        pathMatch: 'full'
       },
-      //page employés séparée
+      {
+        path: 'admin/dashboard',
+        loadComponent: () =>
+          import('./modules/admin/admin-dashboard/admin-dashboard.component')
+            .then(m => m.AdminDashboardComponent),
+        canActivate: [authGuard],
+        data: { roles: ['ADMIN'] }
+      },
+      {
+        path: 'admin/users',
+        loadComponent: () =>
+          import('./modules/admin/admin-users/admin-users.component')
+            .then(m => m.AdminUsersComponent),
+        canActivate: [authGuard],
+        data: { roles: ['ADMIN'] }
+      },
+      {
+        path: 'admin/config',
+        loadComponent: () =>
+          import('./modules/admin/admin-config/admin-config.component')
+            .then(m => m.AdminConfigComponent),
+        canActivate: [authGuard],
+        data: { roles: ['ADMIN'] }
+      },
+      {
+        path: 'admin/securite',
+        loadComponent: () =>
+          import('./modules/admin/admin-securite/admin-securite.component')
+            .then(m => m.AdminSecuriteComponent),
+        canActivate: [authGuard],
+        data: { roles: ['ADMIN'] }
+      },
+      {
+        path: 'admin/logs',
+        loadComponent: () =>
+          import('./modules/admin/admin-logs/admin-logs.component')
+            .then(m => m.AdminLogsComponent),
+        canActivate: [authGuard],
+        data: { roles: ['ADMIN'] }
+      },
+
+      // Employés
       {
         path: 'employes',
         loadComponent: () =>
           import('./modules/employes/employes.component')
-            .then(m => m.EmployesComponent)
+            .then(m => m.EmployesComponent),
+        canActivate: [authGuard],
+        data: { roles: ['RH', 'ADMIN'] }
       },
+
       // Modules RH
       {
         path: 'conges',
@@ -91,12 +135,19 @@ export const routes: Routes = [
             .then(m => m.AvancesComponent)
       },
       {
-  path: 'augmentations',
-  loadComponent: () =>
-    import('./modules/augmentations/augmentations.component')
-      .then(m => m.AugmentationsComponent),
-  canActivate: [authGuard]
-},
+        path: 'augmentations',
+        loadComponent: () =>
+          import('./modules/augmentations/augmentations.component')
+            .then(m => m.AugmentationsComponent),
+        canActivate: [authGuard]
+      },
+      {
+        path: 'ml-insights',
+        loadComponent: () =>
+          import('./modules/ml-insights/ml-insights.component')
+            .then(m => m.MlInsightsComponent),
+        canActivate: [authGuard]
+      },
       {
         path: 'profil',
         loadComponent: () =>

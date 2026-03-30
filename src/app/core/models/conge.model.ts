@@ -1,4 +1,4 @@
-export type TypeConge = 'ANNUEL' | 'MALADIE' | 'EXCEPTIONNEL';
+export type TypeConge = 'ANNUEL' | 'MALADIE' | 'EXCEPTIONNEL' | 'SANS_SOLDE' | 'MATERNITE' | 'PATERNITE';
 
 export type StatutConge =
   | 'BROUILLON'
