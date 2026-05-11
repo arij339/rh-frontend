@@ -22,6 +22,7 @@ import { CommonModule } from '@angular/common';
         </main>
       </div>
     </div>
+    
   `,
   styles: [`
     .layout {
@@ -51,4 +52,5 @@ import { CommonModule } from '@angular/common';
 })
 export class MainLayoutComponent {
   sidebarCollapsed = signal(false);
+  
 }

@@ -5,7 +5,7 @@ import { RouterLink, RouterLinkActive } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { AuthService } from '../../../core/services/auth.service';
 import { SafeHtmlPipe } from '../../../shared/pipes/safe-html.pipe';
-
+import { UserPhotoService } from '../../../core/services/user-photo.service';
 interface NavItem {
   label:   string;
   icon:    string;
@@ -165,8 +165,9 @@ const IC = {
   <!-- User card étendu -->
   @if (!collapsed) {
     <div class="sidebar-user">
-      <div class="user-avatar" [class]="'av-' + role().toLowerCase()">
-        {{ initiales }}
+     <div class="user-avatar" [class]="photo() ? 'av-photo' : 'av-' + role().toLowerCase()">
+        <img *ngIf="photo()" [src]="photo()!" alt="Photo" class="sidebar-avatar-img" />
+        <span *ngIf="!photo()">{{ initiales }}</span>
       </div>
       <div class="user-info">
         <span class="user-name">
@@ -180,9 +181,9 @@ const IC = {
   <!-- Mini avatar réduit -->
   @if (collapsed) {
     <div class="sidebar-user-mini">
-      <div class="user-avatar-mini"
-           [class]="'av-' + role().toLowerCase()">
-        {{ initiales }}
+      <div class="user-avatar-mini" [class]="photo() ? 'av-photo' : 'av-' + role().toLowerCase()">
+        <img *ngIf="photo()" [src]="photo()!" alt="Photo" class="sidebar-avatar-img" />
+        <span *ngIf="!photo()">{{ initiales }}</span>
       </div>
     </div>
   }
@@ -356,6 +357,19 @@ const IC = {
 
       &:hover { background: rgba(255,255,255,0.13); }
     }
+    .user-avatar.av-photo,
+    .user-avatar-mini.av-photo {
+      background: transparent;
+      overflow: hidden;
+      padding: 0;
+    }
+    .sidebar-avatar-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 50%;
+      display: block;
+    }
 
     .user-avatar-mini {
       width: 38px; height: 38px; border-radius: 50%;
@@ -501,6 +515,8 @@ export class SidebarComponent {
   @Output() toggleSidebar = new EventEmitter<void>();
 
   private authService = inject(AuthService);
+  private userPhotoService = inject(UserPhotoService);
+  photo = this.userPhotoService.photoUrl;
   user = this.authService.getCurrentUser();
   ic   = IC;
 
@@ -518,150 +534,150 @@ export class SidebarComponent {
   // ===================================================================
   navItems: NavItem[] = [
 
-    // ─── TOUS LES RÔLES ──────────────────────────────────────────────
-    {
-      label:   'Tableau de bord',
-      route:   '/dashboard',
-      roles:   ['EMPLOYE', 'MANAGER', 'RH'],
-      icon:    IC.dashboard,
-      section: 'Général'
-    },
+  // ─── TOUS LES RÔLES ──────────────────────────────────
+  {
+    label:   'Tableau de bord',
+    route:   '/dashboard',
+    roles:   ['EMPLOYE', 'MANAGER', 'RH'],
+    icon:    IC.dashboard,
+    section: 'Général'
+  },
 
-    // ─── EMPLOYÉ & MANAGER : leurs propres demandes ──────────────────
-    {
-      label: 'Mes Congés',
-      route: '/conges',
-      roles: ['EMPLOYE', 'MANAGER'],
-      icon:  IC.conges
-    },
-    {
-      label: 'Autorisations de Sortie',
-      route: '/autorisations',
-      roles: ['EMPLOYE', 'MANAGER'],
-      icon:  IC.autorisations
-    },
-    {
-      label: 'Réclamations',
-      route: '/reclamations',
-      roles: ['EMPLOYE', 'MANAGER'],
-      icon:  IC.reclamations
-    },
-    {
-      label: 'Avances sur Salaire',
-      route: '/avances',
-      roles: ['EMPLOYE', 'MANAGER'],
-      icon:  IC.avances
-    },
-    {
-      label: 'Augmentations',
-      route: '/augmentations',
-      roles: ['EMPLOYE', 'MANAGER'],
-      icon:  IC.augmentations
-    },
+  // ─── EMPLOYÉ & MANAGER : leurs propres demandes ──────
+  {
+    label: 'Mes Congés',
+    route: '/conges',
+    roles: ['EMPLOYE', 'MANAGER'],
+    icon:  IC.conges
+  },
+  {
+    label: 'Autorisations de Sortie',
+    route: '/autorisations',
+    roles: ['EMPLOYE', 'MANAGER'],
+    icon:  IC.autorisations
+  },
+  {
+    label: 'Réclamations',
+    route: '/reclamations',
+    roles: ['EMPLOYE', 'MANAGER'],
+    icon:  IC.reclamations
+  },
+  {
+    label: 'Avances sur Salaire',
+    route: '/avances',
+    roles: ['EMPLOYE', 'MANAGER'],
+    icon:  IC.avances
+  },
+  {
+    label: 'Augmentations',
+    route: '/augmentations',
+    roles: ['EMPLOYE', 'MANAGER'],
+    icon:  IC.augmentations
+  },
 
-    // ─── MANAGER uniquement ──────────────────────────────────────────
-    {
-      label:   'Mon Équipe',
-      route:   '/equipe',
-      roles:   ['MANAGER'],
-      icon:    IC.equipe,
-      section: 'Management'
-    },
-    {
-      label: 'Demandes à Valider',
-      route: '/validation',
-      roles: ['MANAGER'],
-      icon:  IC.validation
-    },
+  // ─── MANAGER uniquement ──────────────────────────────
+  {
+    label:   'Mon Équipe',
+    route:   '/equipe',
+    roles:   ['MANAGER'],
+    icon:    IC.equipe,
+    section: 'Management'
+  },
+  {
+    label: 'Demandes à Valider',
+    route: '/validation',
+    roles: ['MANAGER'],
+    icon:  IC.validation
+  },
 
-    // ─── PROFIL : tous sauf ADMIN ────────────────────────────────────
-    {
-      label:   'Mon Profil',
-      route:   '/profil',
-      roles:   ['EMPLOYE', 'MANAGER', 'RH'],
-      icon:    IC.profil,
-      section: 'Compte'
-    },
+  // ─── PROFIL : tous sauf ADMIN ────────────────────────
+  {
+    label:   'Mon Profil',
+    route:   '/profil',
+    roles:   ['EMPLOYE', 'MANAGER', 'RH'],
+    icon:    IC.profil,
+    section: 'Compte'
+  },
 
-    // ─── RH uniquement ───────────────────────────────────────────────
-    {
-      label:   'Gestion des Employés',
-      route:   '/employes',
-      roles:   ['RH'],
-      icon:    IC.employes,
-      section: 'Gestion RH'
-    },
-    {
-      label: 'Congés',
-      route: '/conges',
-      roles: ['RH'],
-      icon:  IC.conges
-    },
-    {
-      label: 'Autorisations',
-      route: '/autorisations',
-      roles: ['RH'],
-      icon:  IC.autorisations
-    },
-    {
-      label: 'Réclamations',
-      route: '/reclamations',
-      roles: ['RH'],
-      icon:  IC.reclamations
-    },
-    {
-      label: 'Avances',
-      route: '/avances',
-      roles: ['RH'],
-      icon:  IC.avances
-    },
-    {
-      label: 'Augmentations',
-      route: '/augmentations',
-      roles: ['RH'],
-      icon:  IC.augmentations
-    },
-    {
-      label:   'Analytics & Rapports',
-      route:   '/analytics',
-      roles:   ['RH'],
-      icon:    IC.analytics,
-      section: 'Analyses'
-    },
-    {
-      label: 'IA & Prédictions',
-      route: '/ml-insights',
-      roles: ['RH'],
-      icon:  IC.mlInsights
-    },
+  // ─── RH : uniquement congés (pour consulter son solde) ──
+  {
+    label:   'Mes Congés',
+    route:   '/conges',
+    roles:   ['RH'],
+    icon:    IC.conges,
+    section: 'Mes Demandes'
+  },
 
-    // ─── ADMIN uniquement — exactement 5.9 ──────────────────────────
-    {
-      label:   'Utilisateurs',
-      route:   '/admin/users',
-      roles:   ['ADMIN'],
-      icon:    IC.adminUsers,
-      section: 'Administration'   // 5.9.1
-    },
-    {
-      label: 'Configuration',
-      route: '/admin/config',
-      roles: ['ADMIN'],
-      icon:  IC.adminConfig       // 5.9.2
-    },
-    {
-      label: 'Sécurité',
-      route: '/admin/securite',
-      roles: ['ADMIN'],
-      icon:  IC.adminSecurite     // 5.9.3
-    },
-    {
-      label: 'Logs Système',
-      route: '/admin/logs',
-      roles: ['ADMIN'],
-      icon:  IC.adminLogs         // 5.9.3
-    }
-  ];
+  // ─── RH : espace gestion ─────────────────────────────
+  {
+    label:   'Gestion des Employés',
+    route:   '/employes',
+    roles:   ['RH'],
+    icon:    IC.employes,
+    section: 'Espace RH'      // ← section clairement séparée
+  },
+  {
+    label: 'Validation Demandes',
+    route: '/rh/validation',   // ← route RH dédiée ✅
+    roles: ['RH'],
+    icon:  IC.validation
+  },
+  {
+    label: 'Gestion Congés',
+    route: '/rh/conges',       // ← route RH dédiée ✅
+    roles: ['RH'],
+    icon:  IC.conges
+  },
+  {
+    label: 'Réclamations (RH)',
+    route: '/rh/reclamations', // ← route RH dédiée ✅
+    roles: ['RH'],
+    icon:  IC.reclamations
+  },
+  { label: 'Avances',       route: '/rh/avances',       icon: IC.avances, roles: ['RH'] },
+  {
+    label:   'Analytics & Rapports',
+    route:   '/analytics',
+    roles:   ['RH'],
+    icon:    IC.analytics,
+    section: 'Analyses'
+  },
+  
+
+  // ─── ADMIN uniquement ────────────────────────────────
+  {
+    label:   'Dashboard Admin',
+    route:   '/admin/dashboard',
+    roles:   ['ADMIN'],
+    icon:    IC.dashboard,
+    section: 'Administration'
+  },
+  {
+    label:   'Utilisateurs',
+    route:   '/admin/users',
+    roles:   ['ADMIN'],
+    icon:    IC.adminUsers,
+    section: 'Administration'
+  },
+  {
+    label: 'Configuration',
+    route: '/admin/config',
+    roles: ['ADMIN'],
+    icon:  IC.adminConfig
+  },
+  {
+    label: 'Sécurité',
+    route: '/admin/securite',
+    roles: ['ADMIN'],
+    icon:  IC.adminSecurite
+  },
+  {
+    label: 'Logs Système',
+    route: '/admin/logs',
+    roles: ['ADMIN'],
+    icon:  IC.adminLogs
+  }
+];
 
   getVisibleItems(): NavItem[] {
     const role = this.authService.getRole();

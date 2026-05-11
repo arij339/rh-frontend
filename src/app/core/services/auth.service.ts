@@ -3,7 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { BehaviorSubject, Observable, tap } from 'rxjs';
 
-// ✅ Nouveau modèle LoginRequest
+
 export interface LoginRequest {
   identifiant: string; // CIN ou email
   password:    string;
@@ -16,7 +16,7 @@ export interface AuthResponse {
   nom:                string;
   prenom:             string;
   email:              string;
-  mustChangePassword: boolean; // ✅ garde l'info mais pas de redirect forcée
+  mustChangePassword: boolean; 
 }
 
 export interface UserProfile {
@@ -114,7 +114,7 @@ export class AuthService {
   ): Observable<any> {
     return this.http.post(
       `${this.API}/auth/change-password`,
-      { oldPassword, newPassword }
+      { oldPassword, newPassword },{ responseType: 'text' }
     ).pipe(tap(() => {
       // ✅ Effacer le flag après changement
       this.clearMustChangePassword();

@@ -10,8 +10,8 @@ import { ProfilService } from '../../core/services/profil.service';
 import { AuthService }   from '../../core/services/auth.service';
 import { ProfilEmploye } from '../../core/models/profil.model';
 import { SafeHtmlPipe } from '../../shared/pipes/safe-html.pipe';
-
-type Tab = 'apercu' | 'infos' | 'contrat' | 'historique' | 'securite' | 'rgpd';
+import { UserPhotoService } from '../../core/services/user-photo.service';
+type Tab = 'apercu' | 'infos' | 'contrat' | 'historique' | 'securite' ;
 
 // ─── SVG Icons ────────────────────────────────────────────────────────────────
 const IC = {
@@ -68,6 +68,9 @@ const IC = {
   toastErr:    `<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>`,
   toastInfo:   `<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`,
   clockSmall:  `<svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`,
+  // ── Nouveaux : photo de profil ──
+  camera:      `<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>`,
+  xSmall:      `<svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`,
 };
 
 @Component({
@@ -81,12 +84,48 @@ const IC = {
   <div class="profil-hero" *ngIf="profil()">
     <div class="hero-bg"></div>
     <div class="hero-content">
+
+      <!-- Avatar avec gestion photo de profil -->
       <div class="hero-avatar">
-        <div class="avatar-circle">{{ getInitiales() }}</div>
+        <div class="avatar-circle" [class.has-photo]="getPhotoUrl() || photoPreview()">
+          <img
+            *ngIf="getPhotoUrl() || photoPreview()"
+            [src]="photoPreview() || getPhotoUrl()!"
+            alt="Photo de profil"
+            class="avatar-img"
+          />
+          <span *ngIf="!getPhotoUrl() && !photoPreview()">{{ getInitiales() }}</span>
+        </div>
+
+        <!-- Overlay changement photo (clic sur le label = ouvre le sélecteur de fichier) -->
+        <label class="avatar-change-btn" [class.loading]="photoUploading()" title="Changer la photo de profil">
+          <input
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/gif"
+            style="display:none"
+            (change)="onPhotoChange($event)"
+            [disabled]="photoUploading()"
+          />
+          <span *ngIf="!photoUploading()" [innerHTML]="ic.camera | safeHtml"></span>
+          <span *ngIf="photoUploading()" class="spinner spinner-sm"></span>
+        </label>
+
+        <!-- Bouton supprimer (visible seulement si une photo existe) -->
+        <button
+          *ngIf="getPhotoUrl()"
+          class="avatar-delete-btn"
+          (click)="onDeletePhoto()"
+          title="Supprimer la photo"
+          type="button"
+        >
+          <span [innerHTML]="ic.xSmall | safeHtml"></span>
+        </button>
+
         <div class="avatar-role-badge">
           <span [innerHTML]="getRoleIconSvg() | safeHtml"></span>
         </div>
       </div>
+
       <div class="hero-info">
         <h1>{{ profil()!.prenom }} {{ profil()!.nom }}</h1>
         <div class="hero-meta">
@@ -146,9 +185,7 @@ const IC = {
       <button class="tab" [class.active]="activeTab() === 'securite'" (click)="setTab('securite')">
         <span [innerHTML]="ic.lock | safeHtml"></span> Sécurité
       </button>
-      <button class="tab" [class.active]="activeTab() === 'rgpd'" (click)="setTab('rgpd')">
-        <span [innerHTML]="ic.shield | safeHtml"></span> RGPD
-      </button>
+     
     </div>
   </div>
 
@@ -448,63 +485,8 @@ const IC = {
     </div>
   </div>
 
-  <!-- ===================== RGPD ===================== -->
-  <div *ngIf="activeTab() === 'rgpd'" class="tab-content fade-in">
-    <div class="rgpd-layout">
-      <div class="rgpd-card">
-        <div class="rgpd-icon-wrap"><span [innerHTML]="ic.shieldBig | safeHtml"></span></div>
-        <h3>Protection des données personnelles</h3>
-        <p>Conformément au règlement général sur la protection des données (RGPD), vous disposez de droits sur vos données personnelles.</p>
-
-        <div class="rgpd-section">
-          <h4>Consentement au traitement</h4>
-          <div class="rgpd-toggle" [class.active]="rgpdConsent()" (click)="toggleRgpdConsent()">
-            <div class="rgt-toggle" [class.on]="rgpdConsent()"><div class="rgt-knob"></div></div>
-            <div class="rgt-info">
-              <strong>
-                <span [innerHTML]="(rgpdConsent() ? ic.checkCircle : ic.xCircle) | safeHtml"></span>
-                {{ rgpdConsent() ? 'Consentement accordé' : 'Consentement non accordé' }}
-              </strong>
-              <small>J'accepte que mes données soient utilisées dans le cadre de la gestion RH</small>
-            </div>
-          </div>
-        </div>
-
-        <div class="rgpd-section">
-          <h4>Vos droits</h4>
-          <div class="droits-list">
-            <div class="droit-item">
-              <div class="droit-icon teal"><span [innerHTML]="ic.eyeDroit | safeHtml"></span></div>
-              <div><strong>Droit d'accès</strong><p>Consultez toutes vos données depuis cet espace</p></div>
-            </div>
-            <div class="droit-item">
-              <div class="droit-icon blue"><span [innerHTML]="ic.editDroit | safeHtml"></span></div>
-              <div><strong>Droit de rectification</strong><p>Modifiez vos informations dans l'onglet "Informations"</p></div>
-            </div>
-            <div class="droit-item">
-              <div class="droit-icon red"><span [innerHTML]="ic.trash | safeHtml"></span></div>
-              <div>
-                <strong>Droit à l'oubli</strong>
-                <p>Demandez la suppression de vos données personnelles</p>
-                <button class="btn btn-danger btn-sm" style="margin-top:8px" (click)="demanderSuppression()" [disabled]="deletionLoading()">
-                  <span *ngIf="!deletionLoading()"><span [innerHTML]="ic.trash | safeHtml"></span> Demander la suppression</span>
-                  <span *ngIf="deletionLoading()" class="spinner"></span>
-                </button>
-              </div>
-            </div>
-            <div class="droit-item">
-              <div class="droit-icon amber"><span [innerHTML]="ic.upload | safeHtml"></span></div>
-              <div><strong>Droit à la portabilité</strong><p>Contactez le service RH pour exporter vos données</p></div>
-            </div>
-          </div>
-        </div>
-
-        <div class="form-alert success" *ngIf="rgpdSuccess()">
-          <span [innerHTML]="ic.checkCircle | safeHtml"></span> {{ rgpdSuccess() }}
-        </div>
-      </div>
-    </div>
-  </div>
+ 
+  
 
   <!-- Toast -->
   <div class="toast" [class.show]="toast().show" [class]="'toast toast--' + toast().type">
@@ -546,9 +528,73 @@ const IC = {
     .profil-hero { position: relative; border-radius: 20px; overflow: hidden; margin-bottom: 28px; box-shadow: 0 6px 24px rgba(11,110,126,0.18); }
     .hero-bg { position: absolute; inset: 0; background: linear-gradient(135deg, #073b4c 0%, var(--c-teal-dk) 50%, var(--c-teal) 100%); }
     .hero-content { position: relative; padding: 32px 36px; display: flex; align-items: center; gap: 28px; flex-wrap: wrap; }
+
+    /* ── Avatar ── */
     .hero-avatar { position: relative; flex-shrink: 0; }
-    .avatar-circle { width: 80px; height: 80px; border-radius: 50%; background: rgba(255,255,255,0.15); border: 3px solid rgba(255,255,255,0.4); display: flex; align-items: center; justify-content: center; font-size: 28px; font-weight: 800; color: white; backdrop-filter: blur(10px); }
+
+    .avatar-circle {
+      width: 80px; height: 80px; border-radius: 50%;
+      background: rgba(255,255,255,0.15);
+      border: 3px solid rgba(255,255,255,0.4);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 28px; font-weight: 800; color: white;
+      backdrop-filter: blur(10px);
+      overflow: hidden;
+      transition: border-color 0.2s;
+    }
+    .avatar-circle.has-photo {
+      background: transparent;
+      border-color: rgba(255,255,255,0.6);
+      padding: 0;
+    }
+    .avatar-img {
+      width: 100%; height: 100%;
+      object-fit: cover;
+      border-radius: 50%;
+      display: block;
+    }
+
+    /* Overlay changement photo */
+    .avatar-change-btn {
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      height: 36px;
+      background: rgba(0, 0, 0, 0.55);
+      border-radius: 0 0 50% 50%;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      opacity: 0;
+      transition: opacity 0.2s;
+      color: white;
+      svg { display: block; }
+      &.loading { opacity: 1; }
+    }
+    .hero-avatar:hover .avatar-change-btn { opacity: 1; }
+
+    /* Bouton supprimer photo */
+    .avatar-delete-btn {
+      position: absolute;
+      top: -4px; right: -4px;
+      width: 20px; height: 20px;
+      border-radius: 50%;
+      background: var(--c-red);
+      color: white;
+      border: 2px solid white;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      padding: 0;
+      opacity: 0;
+      transition: opacity 0.2s;
+      svg { display: block; }
+      &:hover { background: #c53030; }
+    }
+    .hero-avatar:hover .avatar-delete-btn { opacity: 1; }
+
     .avatar-role-badge { position: absolute; bottom: -4px; right: -4px; width: 28px; height: 28px; border-radius: 50%; background: rgba(255,255,255,0.9); display: flex; align-items: center; justify-content: center; border: 2px solid white; color: var(--c-teal); svg { display: block; } }
+
+    /* Si photo ET bouton supprimer, décaler le badge de rôle */
+    .hero-avatar:has(.avatar-delete-btn) .avatar-role-badge { bottom: -4px; right: 18px; }
+
     .hero-info { flex: 1; h1 { font-size: 26px; font-weight: 800; color: white; margin-bottom: 10px; } }
     .hero-meta { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
     .hero-chip { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; color: rgba(255,255,255,0.9); font-weight: 500; background: rgba(255,255,255,0.12); padding: 4px 12px; border-radius: 20px; svg { display: block; flex-shrink: 0; } }
@@ -665,10 +711,13 @@ const IC = {
     /* ── Toast ── */
     .toast { position: fixed; bottom: 24px; right: 24px; padding: 13px 18px; border-radius: var(--r); font-size: 13px; font-weight: 600; transform: translateY(80px); opacity: 0; transition: all 0.3s ease; z-index: 2000; box-shadow: 0 8px 24px rgba(0,0,0,0.12); display: flex; align-items: center; gap: 8px; svg { display: block; } &.show { transform: translateY(0); opacity: 1; } &.toast--success { background: var(--c-green-lt); color: var(--c-green); } &.toast--error { background: var(--c-red-lt); color: var(--c-red); } &.toast--info { background: var(--c-teal-lt); color: var(--c-teal); } }
 
+    /* ── Spinners ── */
     .spinner { width: 18px; height: 18px; display: inline-block; border: 2.5px solid rgba(255,255,255,0.35); border-top-color: white; border-radius: 50%; animation: spin 0.75s linear infinite; }
-    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner-sm { width: 14px; height: 14px; border-width: 2px; }
+
     .fade-in { animation: fadeUp 0.22s ease both; }
     @keyframes fadeUp { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes spin { to { transform: rotate(360deg); } }
   `]
 })
 export class ProfilComponent implements OnInit {
@@ -676,7 +725,7 @@ export class ProfilComponent implements OnInit {
   private profilService = inject(ProfilService);
   private authService   = inject(AuthService);
   private fb            = inject(FormBuilder);
-
+  private userPhotoService = inject(UserPhotoService);
   role = this.authService.getRole();
   ic   = IC;
 
@@ -686,6 +735,10 @@ export class ProfilComponent implements OnInit {
   mdpLoading      = signal(false);
   notifLoading    = signal(false);
   deletionLoading = signal(false);
+
+  // ── Photo de profil ──
+  photoUploading = signal(false);
+  photoPreview   = signal<string | null>(null);
 
   profil       = signal<ProfilEmploye | null>(null);
   loginHistory = signal<any[]>([]);
@@ -720,10 +773,17 @@ export class ProfilComponent implements OnInit {
   ngOnInit(): void { this.loadProfil(); }
 
   private loadProfil(): void {
-    this.profilService.getMonProfil().subscribe({
-      next: (data) => { this.profil.set(data); this.patchForm(data); this.loading.set(false); },
-      error: () => this.loading.set(false)
-    });
+   this.profilService.getMonProfil().subscribe({
+    next: (data) => {
+      this.profil.set(data);
+      this.patchForm(data);
+      // ✅ Initialiser les préférences de notification depuis le backend
+      this.notifEmail.set((data as any).notifEmail ?? true);
+      this.notifInApp.set((data as any).notifInApp ?? true);
+      this.loading.set(false);
+    },
+    error: () => this.loading.set(false)
+  });
   }
 
   private patchForm(p: ProfilEmploye): void {
@@ -737,6 +797,7 @@ export class ProfilComponent implements OnInit {
       contactUrgenceTelephone: p.contactUrgenceTelephone ?? '',
       contactUrgenceRelation: p.contactUrgenceRelation ?? ''
     });
+    this.userPhotoService.setPhoto(p.photoUrl ?? null);
   }
 
   setTab(tab: Tab): void { this.activeTab.set(tab); this.saveError.set(''); this.saveSuccess.set(''); }
@@ -762,9 +823,21 @@ export class ProfilComponent implements OnInit {
 
   saveNotifSettings(): void {
     this.notifLoading.set(true);
-    this.profilService.updateNotifSettings({ notifEmail: this.notifEmail(), notifInApp: this.notifInApp() }).subscribe({
-      next: () => { this.notifLoading.set(false); this.showToast('Préférences enregistrées !', 'success'); },
-      error: () => { this.notifLoading.set(false); this.showToast('Erreur', 'error'); }
+    this.profilService.updateNotifSettings({
+      notifEmail: this.notifEmail(),
+      notifInApp: this.notifInApp()
+    }).subscribe({
+      next: () => {
+        this.notifLoading.set(false);
+        this.showToast('Préférences enregistrées !', 'success');
+      },
+      error: (err) => {
+        this.notifLoading.set(false);
+        const msg = err?.error?.message
+          ?? err?.message
+          ?? `Erreur ${err?.status ?? ''}`.trim();
+        this.showToast(msg || 'Erreur lors de la sauvegarde', 'error');
+      }
     });
   }
 
@@ -785,7 +858,86 @@ export class ProfilComponent implements OnInit {
     });
   }
 
-  // ── Helpers ──
+  // ── Photo de profil ─────────────────────────────────────────────────────────
+
+  /**
+   * Déclenché quand l'utilisateur sélectionne un fichier dans la galerie.
+   * Affiche un aperçu immédiat puis upload vers le backend.
+   */
+  onPhotoChange(event: Event): void {
+  const input = event.target as HTMLInputElement;
+  if (!input.files || input.files.length === 0) return;
+  const file = input.files[0];
+ 
+  if (!file.type.startsWith('image/')) {
+    this.showToast('Le fichier doit être une image', 'error');
+    return;
+  }
+  if (file.size > 5 * 1024 * 1024) {
+    this.showToast('La photo ne doit pas dépasser 5 MB', 'error');
+    return;
+  }
+ 
+  // Aperçu instantané
+  const reader = new FileReader();
+  reader.onload = (e) => this.photoPreview.set(e.target?.result as string);
+  reader.readAsDataURL(file);
+ 
+  this.photoUploading.set(true);
+  this.profilService.uploadPhoto(file).subscribe({
+    next: (res) => {
+      this.photoUploading.set(false);
+      const p = this.profil();
+      if (p) this.profil.set({ ...p, photoUrl: res.photoUrl });
+ 
+      // ✅ Notifier navbar + sidebar
+      this.userPhotoService.setPhoto(res.photoUrl);
+ 
+      this.showToast('Photo de profil mise à jour !', 'success');
+    },
+    error: (err) => {
+      this.photoUploading.set(false);
+      this.photoPreview.set(null);
+      this.showToast(err.error?.message ?? "Erreur lors de l'upload", 'error');
+    }
+  });
+}
+
+  /** Supprime la photo de profil après confirmation. */
+  onDeletePhoto(): void {
+  if (!confirm('Supprimer votre photo de profil ?')) return;
+  this.profilService.deletePhoto().subscribe({
+    next: () => {
+      const p = this.profil();
+      if (p) this.profil.set({ ...p, photoUrl: null });
+      this.photoPreview.set(null);
+ 
+      // ✅ Notifier navbar + sidebar
+      this.userPhotoService.clearPhoto();
+ 
+      this.showToast('Photo supprimée', 'info');
+    },
+    error: () => this.showToast('Erreur lors de la suppression', 'error')
+  });
+}
+
+  /**
+   * Retourne l'URL complète de la photo (avec base URL backend si nécessaire).
+   * Retourne null si pas de photo.
+   */
+  getPhotoUrl(): string | null {
+    const p = this.profil();
+    if (!p?.photoUrl) return null;
+    return this.buildPhotoUrl(p.photoUrl);
+  }
+
+  private buildPhotoUrl(photoUrl: string): string {
+    if (photoUrl.startsWith('http')) return photoUrl;
+    return 'http://localhost:8080' + photoUrl;
+  }
+
+  // ── Helpers ──────────────────────────────────────────────────────────────────
+
   isRHOrAdmin(): boolean { return ['RH','ADMIN'].includes(this.role); }
   isMdpInvalid(field: string): boolean { const c = this.mdpForm.get(field); return !!(c?.invalid && c?.touched); }
   mdpMismatch(): boolean { const n = this.mdpForm.get('newPassword')?.value; const c = this.mdpForm.get('confirmPassword')?.value; return !!(c && n !== c); }

@@ -37,6 +37,7 @@ export interface DemandeConge {
   dateValidationManager: string;
   dateValidationRh:    string;
   createdAt:           string;
+  fichierJustificatif: string | null;
 }
 
 export interface CongeRequest {

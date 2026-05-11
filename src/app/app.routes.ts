@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/guards/auth.guard';
+import { roleGuard } from './core/guards/role.guard';
 
 export const routes: Routes = [
   // ===== PAGES PUBLIQUES =====
@@ -30,29 +31,36 @@ export const routes: Routes = [
         .then(m => m.MainLayoutComponent),
     canActivate: [authGuard],
     children: [
-      // Change password DANS le layout
+
+      // ── Auth ──────────────────────────────────────────────────────
       {
         path: 'change-password',
         loadComponent: () =>
           import('./modules/auth/change-password/change-password.component')
             .then(m => m.ChangePasswordComponent)
       },
-      // Dashboard
+
+      // ── Dashboard (tous rôles) ─────────────────────────────────────
       {
         path: 'dashboard',
         loadComponent: () =>
           import('./modules/dashboard/dashboard.component')
             .then(m => m.DashboardComponent)
       },
-      // Analytics
+
+      // ── Analytics ─────────────────────────────────────────────────
       {
         path: 'analytics',
         loadComponent: () =>
           import('./modules/analytics/analytics.component')
-            .then(m => m.AnalyticsComponent)
+            .then(m => m.AnalyticsComponent),
+        canActivate: [authGuard],
+        data: { roles: ['RH'] }
       },
 
-      // ===== ADMIN — pages séparées =====
+      
+
+      // ── ADMIN ─────────────────────────────────────────────────────
       {
         path: 'admin',
         redirectTo: 'admin/dashboard',
@@ -99,7 +107,7 @@ export const routes: Routes = [
         data: { roles: ['ADMIN'] }
       },
 
-      // Employés
+      // ── Employés (RH) ─────────────────────────────────────────────
       {
         path: 'employes',
         loadComponent: () =>
@@ -109,53 +117,113 @@ export const routes: Routes = [
         data: { roles: ['RH', 'ADMIN'] }
       },
 
-      // Modules RH
+      // ── MANAGER ───────────────────────────────────────────────────
+      {
+        path: 'equipe',
+        loadComponent: () =>
+          import('./modules/manager/equipe/equipe.component')
+            .then(m => m.EquipeComponent),
+        canActivate: [authGuard],
+        data: { roles: ['MANAGER'] }
+      },
+      {
+        path: 'validation',
+        loadComponent: () =>
+          import('./modules/manager/validation/validation.component')
+            .then(m => m.ValidationComponent),
+        canActivate: [authGuard],
+        data: { roles: ['MANAGER'] }
+      },
+
+      // ── RH — espace dédié ─────────────────────────────────────────
+      {
+        path: 'rh/validation',
+        loadComponent: () =>
+          import('./modules/rh/rh-validation/rh-validation.component')
+            .then(m => m.RhValidationComponent),
+        canActivate: [authGuard],
+        data: { roles: ['RH'] }
+      },
+      {
+        path: 'rh/conges',
+        loadComponent: () =>
+          import('./modules/rh/rh-conges/rh-conges.component')
+            .then(m => m.RhCongesComponent),
+        canActivate: [authGuard],
+        data: { roles: ['RH'] }
+      },
+      {
+        path: 'rh/reclamations',
+        loadComponent: () =>
+          import('./modules/rh/rh-reclamations/rh-reclamations.component')
+            .then(m => m.RhReclamationsComponent),
+        canActivate: [authGuard],
+        data: { roles: ['RH'] }
+      },
+
+      {
+  path: 'rh/avances',
+  loadComponent: () =>
+    import('./modules/rh/rh-avances/rh-avances.component')
+      .then(m => m.RhAvancesComponent),
+  canActivate: [authGuard, roleGuard],
+  data: { roles: ['RH', 'ADMIN'] }
+},
+      // ── Modules communs (EMPLOYE + MANAGER) ───────────────────────
       {
         path: 'conges',
         loadComponent: () =>
           import('./modules/conges/conges.component')
-            .then(m => m.CongesComponent)
+            .then(m => m.CongesComponent),
+        canActivate: [authGuard],
+        data: { roles: ['EMPLOYE', 'MANAGER', 'RH'] }  // RH peut voir ses congés
       },
       {
         path: 'autorisations',
         loadComponent: () =>
           import('./modules/autorisations/autorisations.component')
-            .then(m => m.AutorisationsComponent)
+            .then(m => m.AutorisationsComponent),
+        canActivate: [authGuard],
+        data: { roles: ['EMPLOYE', 'MANAGER'] }  // RH exclu
       },
       {
         path: 'reclamations',
         loadComponent: () =>
           import('./modules/reclamations/reclamations.component')
-            .then(m => m.ReclamationsComponent)
+            .then(m => m.ReclamationsComponent),
+        canActivate: [authGuard],
+        data: { roles: ['EMPLOYE', 'MANAGER'] }  // RH exclu
       },
       {
         path: 'avances',
         loadComponent: () =>
           import('./modules/avances/avances.component')
-            .then(m => m.AvancesComponent)
+            .then(m => m.AvancesComponent),
+        canActivate: [authGuard],
+        data: { roles: ['EMPLOYE', 'MANAGER'] }  // RH exclu
       },
       {
         path: 'augmentations',
         loadComponent: () =>
           import('./modules/augmentations/augmentations.component')
             .then(m => m.AugmentationsComponent),
-        canActivate: [authGuard]
+        canActivate: [authGuard],
+        data: { roles: ['EMPLOYE', 'MANAGER'] }  // RH exclu
       },
-      {
-        path: 'ml-insights',
-        loadComponent: () =>
-          import('./modules/ml-insights/ml-insights.component')
-            .then(m => m.MlInsightsComponent),
-        canActivate: [authGuard]
-      },
+
+      // ── Profil ────────────────────────────────────────────────────
       {
         path: 'profil',
         loadComponent: () =>
           import('./modules/profil/profil.component')
-            .then(m => m.ProfilComponent)
+            .then(m => m.ProfilComponent),
+        canActivate: [authGuard],
+        data: { roles: ['EMPLOYE', 'MANAGER', 'RH'] }
       },
+
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' }
     ]
   },
+
   { path: '**', redirectTo: 'login' }
 ];

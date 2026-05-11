@@ -35,6 +35,7 @@ const IC = {
   barChart:    `<svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/><line x1="2" y1="20" x2="22" y2="20"/></svg>`,
   search:      `<svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>`,
   alertCircle: `<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`,
+  info:        `<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>`,
   // Tips icons
   trendUp:     `<svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>`,
   anchor:      `<svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><circle cx="12" cy="5" r="3"/><line x1="12" y1="22" x2="12" y2="8"/><path d="M5 12H2a10 10 0 0 0 20 0h-3"/></svg>`,
@@ -77,7 +78,7 @@ const IC = {
         <span [innerHTML]="ic.plus | safeHtml"></span>
         Nouvelle demande
       </button>
-      <button class="tab" *ngIf="isManagerOrAbove()" [class.active]="activeTab() === 'en-attente'" (click)="setTab('en-attente')">
+      <button class="tab" *ngIf="isRHOrAdmin()" [class.active]="activeTab() === 'en-attente'" (click)="setTab('en-attente')">
         <span [innerHTML]="ic.clock | safeHtml"></span>
         En attente
         <span class="tab-count warning" *ngIf="enAttente().length > 0">{{ enAttente().length }}</span>
@@ -232,6 +233,21 @@ const IC = {
                 <strong>{{ simulation()!.salaireApres | number:'1.3-3' }} DT</strong>
               </div>
               <div class="sp-pct">+{{ simulation()!.pourcentage }}%</div>
+            </div>
+
+            <!-- Alerte seuil dépassé -->
+            <div class="sim-alert sim-alert--warning" *ngIf="simulation()!.depasseSeuil">
+              <span [innerHTML]="ic.alertCircle | safeHtml"></span>
+              <div>
+                <strong>Montant élevé</strong>
+                <span>Cette augmentation dépasse le seuil de {{ simulation()!.seuilMaxPct }}% recommandé par la politique de l'entreprise. La demande peut être rejetée ou ajustée par le RH.</span>
+              </div>
+            </div>
+
+            <!-- Plafond info -->
+            <div class="sim-info" *ngIf="simulation()!.montantMax">
+              <span [innerHTML]="ic.info | safeHtml"></span>
+              Plafond autorisé : <strong>{{ simulation()!.montantMax | number:'1.3-3' }} DT</strong> ({{ simulation()!.seuilMaxPct }}% du salaire actuel)
             </div>
           </div>
 
@@ -579,6 +595,10 @@ const IC = {
     .sp-item { display: flex; flex-direction: column; gap: 3px; text-align: center; span { font-size: 10px; color: var(--c-muted); text-transform: uppercase; font-weight: 600; } strong { font-size: 15px; font-weight: 800; color: var(--c-text); } &.teal strong { color: var(--c-teal); } &.green strong { color: var(--c-green); } }
     .sp-arrow { font-size: 20px; color: var(--c-teal); font-weight: 700; }
     .sp-pct { background: var(--c-green); color: white; padding: 6px 12px; border-radius: 20px; font-size: 14px; font-weight: 800; margin-left: auto; }
+    .sim-alert { display: flex; align-items: flex-start; gap: 10px; padding: 11px 13px; border-radius: var(--r); margin-top: 12px; font-size: 12.5px; line-height: 1.5; }
+    .sim-alert strong { display: block; font-size: 13px; margin-bottom: 2px; }
+    .sim-alert--warning { background: #FAEEDA; border: 1px solid #EF9F27; color: #7A4B0A; svg { color: #BA7517; flex-shrink: 0; margin-top: 2px; } }
+    .sim-info { display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: 12px; color: var(--c-muted); padding: 8px 10px; background: rgba(255,255,255,0.6); border-radius: var(--r); strong { color: var(--c-primary); } }
 
     .form-alert { display: flex; align-items: center; gap: 8px; padding: 11px 14px; border-radius: var(--r); font-size: 13px; margin-bottom: 14px; svg { flex-shrink: 0; display: block; } &.error { background: var(--c-red-lt); color: var(--c-red); } &.success { background: var(--c-green-lt); color: var(--c-green); } }
     .form-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 18px; }
@@ -744,7 +764,7 @@ export class AugmentationsComponent implements OnInit {
   getInitiales(a: AugmentationSalaire): string { return ((a.employePrenom?.[0] ?? '') + (a.employeNom?.[0] ?? '')).toUpperCase(); }
 
   getSubtitle(): string {
-    const map: Record<string,string> = { EMPLOYE: 'Demandez une augmentation de salaire', MANAGER: 'Donnez votre avis sur les demandes', RH: 'Gérez les demandes d\'augmentation', ADMIN: 'Supervision des augmentations' };
+    const map: Record<string,string> = { EMPLOYE: 'Demandez une augmentation de salaire', RH: 'Gérez les demandes d\'augmentation', ADMIN: 'Supervision des augmentations' };
     return map[this.role] ?? '';
   }
 

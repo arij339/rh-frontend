@@ -37,6 +37,18 @@ export class CongeService {
     return this.http.put<DemandeConge>(
       `${this.API}/employe/conges/${id}/annuler`, {});
   }
+   // ─── Pièce justificative ──────────────────────────────────────────
+  uploadJustificatif(id: number, file: File): Observable<{ justificatifUrl: string }> {
+    const formData = new FormData();
+    formData.append('file', file);
+    return this.http.post<{ justificatifUrl: string }>(
+      `${this.API}/employe/conges/${id}/justificatif`, formData);
+  }
+ 
+  deleteJustificatif(id: number): Observable<void> {
+    return this.http.delete<void>(
+      `${this.API}/employe/conges/${id}/justificatif`);
+  }
 
   // ===== MANAGER =====
   getEnAttenteManager(): Observable<DemandeConge[]> {

@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, OnInit, OnDestroy, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
@@ -25,14 +25,6 @@ const IC = {
   template: `
 <div class="page">
 
-  <!--
-    ANIMATION D'ÉCHANGE DE PANNEAUX :
-    Les deux panneaux sont en position:absolute à l'intérieur de .card (overflow:hidden).
-    .panel-colored occupe les 41.5% gauche → en mode "cin" il glisse vers la droite via CSS.
-    .panel-form occupe les 58.5% droite   → en mode "cin" il glisse vers la gauche via CSS.
-    Tout se fait via une transition sur les propriétés left/right, sans JS.
-    La classe .swapped est ajoutée/retirée instantanément, la transition CSS fait le reste.
-  -->
   <div class="card" [class.swapped]="loginMode() === 'cin'">
 
     <!-- ══ PANNEAU COLORÉ ══ -->
@@ -123,14 +115,58 @@ const IC = {
             <span class="field-err" *ngIf="isInvalid('password')">Mot de passe requis</span>
           </div>
 
-          <!-- Alerte erreur -->
-          <div class="alert-error" *ngIf="errorMsg()">
-            <span [innerHTML]="ic.alert | safeHtml"></span>
-            {{ errorMsg() }}
-          </div>
+          <!-- ── COMPTE VERROUILLÉ ── -->
+          @if (isLocked()) {
+            <div class="alert-locked">
+              <div class="lock-icon">🔒</div>
+              <div class="lock-body">
+                <strong>Compte temporairement bloqué</strong>
+                <p>
+                  Trop de tentatives incorrectes. Réessayez dans
+                  <span class="countdown">{{ formatCountdown() }}</span>
+                </p>
+                <div class="lock-bar">
+                  <div class="lock-fill"
+                       [style.width]="(remainingSeconds() / 1800 * 100) + '%'">
+                  </div>
+                </div>
+                <small>Votre compte se déverrouillera automatiquement.</small>
+              </div>
+            </div>
+          }
+
+          <!-- ── TENTATIVES RESTANTES ── -->
+          @if (!isLocked() && failedCount() > 0) {
+            <div class="alert-attempts">
+              <span>⚠️</span>
+              <div>
+                <strong>{{ failedCount() }} / 5 tentative(s) échouée(s)</strong>
+                <div class="attempts-dots">
+                  @for (i of [1,2,3,4,5]; track i) {
+                    <span class="dot" [class.filled]="i <= failedCount()"></span>
+                  }
+                </div>
+                @if (failedCount() >= 4) {
+                  <small style="color:#c53030">
+                    ⚠️ Encore 1 tentative avant blocage de 30 min !
+                  </small>
+                }
+              </div>
+            </div>
+          }
+
+          <!-- ── ERREUR SIMPLE ── -->
+          @if (!isLocked() && errorMsg() && failedCount() === 0) {
+            <div class="alert-error">
+              <span [innerHTML]="ic.alert | safeHtml"></span>
+              {{ errorMsg() }}
+            </div>
+          }
 
           <!-- Bouton soumettre -->
-          <button type="submit" class="btn-submit" [disabled]="loading()">
+          <button type="submit" class="btn-submit"
+                  [disabled]="loading() || isLocked()"
+                  [class.btn-locked]="isLocked()">
             <span *ngIf="!loading()" class="btn-inner">
               Se connecter
               <span [innerHTML]="ic.arrowRight | safeHtml"></span>
@@ -179,9 +215,7 @@ const IC = {
       --font:         'Plus Jakarta Sans', sans-serif;
       --font-display: 'Sora', sans-serif;
       --card-w:       820px;
-      /* Largeur du panneau coloré en % de la carte */
       --cp:           41.5%;
-      /* Durée & easing du swap */
       --dur:          0.65s;
       --ease:         cubic-bezier(0.77, 0, 0.175, 1);
     }
@@ -223,11 +257,6 @@ const IC = {
       to   { opacity: 1; transform: translateY(0) scale(1); }
     }
 
-    /* ══════════════════════════════════════════
-       PANNEAU COLORÉ
-       État normal  : left=6px,   width=calc(--cp - 6px)   → côté gauche
-       État swapped : left=calc(100% - --cp), même width   → côté droit
-    ══════════════════════════════════════════ */
     .panel-colored {
       position: absolute;
       top: 6px;
@@ -250,7 +279,6 @@ const IC = {
       left: calc(100% - var(--cp));
     }
 
-    /* Blobs */
     .blob {
       position: absolute;
       border-radius: 50%;
@@ -263,7 +291,6 @@ const IC = {
     .blob-3 { width: 80px;  height: 80px;  top: 50%; right: 30px;
                transform: translateY(-50%); background: rgba(255,255,255,0.07); }
 
-    /* Contenu interne */
     .panel-inner {
       position: absolute;
       inset: 0;
@@ -350,11 +377,6 @@ const IC = {
       transform: translateX(2px);
     }
 
-    /* ══════════════════════════════════════════
-       PANNEAU FORMULAIRE
-       État normal  : left=--cp,     right=0  → côté droit
-       État swapped : left=0, right=--cp      → côté gauche
-    ══════════════════════════════════════════ */
     .panel-form {
       position: absolute;
       top: 0;
@@ -475,7 +497,7 @@ const IC = {
     .eye-btn:hover { color: var(--primary); }
     .field-err { font-size: 11.5px; color: var(--red); font-weight: 500; }
 
-    /* ── ALERTE ── */
+    /* ── ALERTE ERREUR SIMPLE ── */
     .alert-error {
       display: flex;
       align-items: center;
@@ -488,6 +510,105 @@ const IC = {
       margin-bottom: 16px;
       font-size: 13px;
       font-weight: 500;
+    }
+
+    /* ── VERROUILLAGE ── */
+    .alert-locked {
+      display: flex;
+      gap: 14px;
+      background: #fff8e1;
+      border: 1.5px solid #f59e0b;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 16px;
+      animation: shakeIn .4s ease;
+    }
+    .lock-icon {
+      font-size: 28px;
+      flex-shrink: 0;
+      line-height: 1;
+    }
+    .lock-body {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .lock-body strong {
+      font-size: 14px;
+      color: #92400e;
+      display: block;
+    }
+    .lock-body p {
+      font-size: 13px;
+      color: #78350f;
+      margin: 0;
+    }
+    .lock-body small {
+      font-size: 11px;
+      color: #a16207;
+    }
+    .countdown {
+      display: inline-block;
+      background: #f59e0b;
+      color: white;
+      font-weight: 700;
+      font-size: 15px;
+      padding: 2px 10px;
+      border-radius: 6px;
+      font-variant-numeric: tabular-nums;
+      min-width: 52px;
+      text-align: center;
+      letter-spacing: 1px;
+    }
+    .lock-bar {
+      height: 4px;
+      background: #fde68a;
+      border-radius: 2px;
+      overflow: hidden;
+      margin-top: 4px;
+    }
+    .lock-fill {
+      height: 100%;
+      background: #f59e0b;
+      border-radius: 2px;
+      transition: width 1s linear;
+    }
+
+    /* ── TENTATIVES ── */
+    .alert-attempts {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      background: #fff5f5;
+      border: 1.5px solid #fc8181;
+      border-radius: 10px;
+      padding: 12px 14px;
+      margin-bottom: 16px;
+      font-size: 13px;
+      color: #742a2a;
+    }
+    .alert-attempts strong {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 13px;
+    }
+    .attempts-dots {
+      display: flex;
+      gap: 5px;
+      margin-bottom: 4px;
+    }
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #fed7d7;
+      border: 1.5px solid #fc8181;
+      transition: background .2s;
+    }
+    .dot.filled {
+      background: #e53e3e;
+      border-color: #c53030;
     }
 
     /* ── BOUTON ── */
@@ -518,6 +639,14 @@ const IC = {
     }
     .btn-submit:active:not(:disabled) { transform: translateY(0); }
     .btn-submit:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* Bouton bloqué */
+    .btn-locked {
+      opacity: .5 !important;
+      cursor: not-allowed !important;
+      background: linear-gradient(135deg, #94a3b8, #64748b) !important;
+      box-shadow: none !important;
+    }
 
     /* ── HINT ── */
     .hint-pwd {
@@ -556,6 +685,13 @@ const IC = {
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
+    @keyframes shakeIn {
+      0%  { transform: translateX(-6px); opacity: 0; }
+      30% { transform: translateX(4px); }
+      60% { transform: translateX(-2px); }
+      100%{ transform: translateX(0); opacity: 1; }
+    }
+
     /* ── RESPONSIVE ── */
     @media (max-width: 680px) {
       .card {
@@ -592,25 +728,97 @@ const IC = {
     }
   `]
 })
-export class LoginComponent {
+export class LoginComponent implements OnDestroy, OnInit {
   private fb     = inject(FormBuilder);
   private auth   = inject(AuthService);
   private router = inject(Router);
 
   ic = IC;
 
-  // Démarre directement en mode e-mail
   loginMode         = signal<'cin' | 'email'>('email');
   loading           = signal(false);
   errorMsg          = signal('');
   showPassword      = signal(false);
   showChangePwdHint = signal(false);
+  isLocked          = signal(false);
+  remainingSeconds  = signal(0);
+  failedCount       = signal(0);
   currentYear       = new Date().getFullYear();
+
+  private lockTimer: any = null;
 
   form = this.fb.group({
     identifiant: ['', [Validators.required, Validators.minLength(6)]],
     password:    ['', Validators.required]
   });
+
+  ngOnInit(): void {
+    this.checkExistingLock();
+  }
+
+  ngOnDestroy(): void {
+    if (this.lockTimer) clearInterval(this.lockTimer);
+  }
+
+  /** Formate mm:ss pour le compte à rebours */
+  formatCountdown(): string {
+    const s = this.remainingSeconds();
+    const m = Math.floor(s / 60);
+    const sec = s % 60;
+    return `${m.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
+  }
+
+  /** Démarre le compte à rebours de 30 min */
+  private startLockCountdown(minutes: number = 30): void {
+    this.isLocked.set(true);
+    this.remainingSeconds.set(minutes * 60);
+
+    const unlockAt = Date.now() + minutes * 60 * 1000;
+    localStorage.setItem('loginLockedUntil', unlockAt.toString());
+
+    this.lockTimer = setInterval(() => {
+      const remaining = Math.max(0,
+        Math.ceil((unlockAt - Date.now()) / 1000));
+      this.remainingSeconds.set(remaining);
+
+      if (remaining <= 0) {
+        this.deverrouiller();
+      }
+    }, 1000);
+  }
+
+  /** Déverrouille le formulaire */
+  private deverrouiller(): void {
+    if (this.lockTimer) {
+      clearInterval(this.lockTimer);
+      this.lockTimer = null;
+    }
+    this.isLocked.set(false);
+    this.remainingSeconds.set(0);
+    this.failedCount.set(0);
+    this.errorMsg.set('');
+    localStorage.removeItem('loginLockedUntil');
+  }
+
+  /** Vérifie si un verrouillage actif existe au chargement */
+  private checkExistingLock(): void {
+    const lockedUntil = localStorage.getItem('loginLockedUntil');
+    if (lockedUntil) {
+      const remaining = Math.ceil((+lockedUntil - Date.now()) / 1000);
+      if (remaining > 0) {
+        this.isLocked.set(true);
+        this.remainingSeconds.set(remaining);
+        this.lockTimer = setInterval(() => {
+          const r = Math.max(0,
+            Math.ceil((+lockedUntil - Date.now()) / 1000));
+          this.remainingSeconds.set(r);
+          if (r <= 0) this.deverrouiller();
+        }, 1000);
+      } else {
+        localStorage.removeItem('loginLockedUntil');
+      }
+    }
+  }
 
   switchMode(mode: 'cin' | 'email'): void {
     if (mode === this.loginMode()) return;
@@ -626,6 +834,7 @@ export class LoginComponent {
   }
 
   onSubmit(): void {
+    if (this.isLocked()) return;
     if (this.form.invalid) { this.form.markAllAsTouched(); return; }
     this.loading.set(true);
     this.errorMsg.set('');
@@ -639,13 +848,28 @@ export class LoginComponent {
         this.loading.set(false);
         if (res.mustChangePassword) this.showChangePwdHint.set(true);
         const role = res.role;
-        if (role === 'ADMIN')      this.router.navigate(['/admin/users']);
+        if (role === 'ADMIN')      this.router.navigate(['/dashboard']);
         else if (role === 'RH')    this.router.navigate(['/dashboard']);
         else                       this.router.navigate(['/profil']);
       },
-      error: (err) => {
+      error: (err: any) => {
         this.loading.set(false);
-        this.errorMsg.set(err.error?.message ?? 'Identifiant ou mot de passe incorrect.');
+        const msg: string = err?.error?.message ?? 'Identifiant ou mot de passe incorrect.';
+
+        // ── Compte verrouillé (après 5 tentatives) ──
+        if (err?.status === 423 || msg.toLowerCase().includes('verrouillé')) {
+          this.failedCount.set(5);
+          this.startLockCountdown(30);
+          return;
+        }
+
+        // ── Tentatives restantes ──
+        const match = msg.match(/(\d+)\s*tentative/);
+        if (match) {
+          this.failedCount.set(5 - parseInt(match[1]));
+        }
+
+        this.errorMsg.set(msg);
       }
     });
   }

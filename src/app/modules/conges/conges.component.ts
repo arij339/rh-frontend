@@ -8,6 +8,7 @@ import {
 import { forkJoin } from 'rxjs';
 import { CongeService } from '../../core/services/conge.service';
 import { AuthService }  from '../../core/services/auth.service';
+import { ProfilService } from '../../core/services/profil.service';
 import {
   DemandeConge, SoldeConge, StatutConge
 } from '../../core/models/conge.model';
@@ -99,6 +100,8 @@ const SVG = {
     <!-- Tabs -->
     <div class="tabs-wrapper">
       <div class="tabs">
+
+        <!-- Mes demandes : visible pour TOUS -->
         <button class="tab"
                 [class.active]="activeTab() === 'mes-demandes'"
                 (click)="setTab('mes-demandes')">
@@ -106,14 +109,18 @@ const SVG = {
           Mes demandes
           <span class="tab-count">{{ mesDemandes().length }}</span>
         </button>
+
+        <!-- Nouvelle demande : visible pour TOUS -->
         <button class="tab"
                 [class.active]="activeTab() === 'nouvelle'"
                 (click)="setTab('nouvelle')">
           <span [innerHTML]="icons.plus | safeHtml"></span>
           Nouvelle demande
         </button>
+
+        <!-- En attente — seulement pour MANAGER (pas RH ni ADMIN) -->
         <button class="tab"
-                *ngIf="isManagerOrAbove()"
+                *ngIf="isManagerOnly()"
                 [class.active]="activeTab() === 'en-attente'"
                 (click)="setTab('en-attente')">
           <span [innerHTML]="icons.clock | safeHtml"></span>
@@ -122,20 +129,16 @@ const SVG = {
             {{ enAttente().length }}
           </span>
         </button>
+
+        <!-- Calendrier équipe — seulement pour MANAGER (pas RH ni ADMIN) -->
         <button class="tab"
-                *ngIf="isRHOrAdmin()"
-                [class.active]="activeTab() === 'toutes'"
-                (click)="setTab('toutes')">
-          <span [innerHTML]="icons.folder | safeHtml"></span>
-          Toutes les demandes
-        </button>
-        <button class="tab"
-                *ngIf="isManagerOrAbove()"
+                *ngIf="isManagerOnly()"
                 [class.active]="activeTab() === 'calendrier'"
                 (click)="setTab('calendrier')">
           <span [innerHTML]="icons.calSmall | safeHtml"></span>
           Calendrier équipe
         </button>
+
       </div>
     </div>
 
@@ -156,6 +159,9 @@ const SVG = {
           <option value="ANNUEL">Congé Annuel</option>
           <option value="MALADIE">Congé Maladie</option>
           <option value="EXCEPTIONNEL">Congé Exceptionnel</option>
+          <option value="MATERNITE">Congé Maternité</option>
+          <option value="PATERNITE">Congé Paternité</option>
+          <option value="SANS_SOLDE">Congé Sans Solde</option>
         </select>
       </div>
 
@@ -166,7 +172,7 @@ const SVG = {
 
           <div class="dc-header">
             <div class="dc-title">
-              <span class="dc-icon" [innerHTML]="getTypeIconSvg(c.typeConge)"></span>
+              <span class="dc-icon" [innerHTML]="getTypeIconSvg(c.typeConge)|safeHtml"></span>
               <div>
                 <strong>{{ getTypeLabel(c.typeConge) }}</strong>
                 <span class="dc-sub">Créée le {{ c.createdAt | date:'dd/MM/yyyy' }}</span>
@@ -268,7 +274,7 @@ const SVG = {
       </div>
 
       <div class="empty-state" *ngIf="getFilteredMesDemandes().length === 0">
-        <div class="empty-icon" [innerHTML]="icons.beach"></div>
+        <div class="empty-icon" [innerHTML]="icons.beach |safeHtml"></div>
         <h3>Aucune demande</h3>
         <p>Vous n'avez pas encore de demande de congé.</p>
         <button class="btn btn-primary" (click)="setTab('nouvelle')">
@@ -296,7 +302,7 @@ const SVG = {
             <label>Type de congé *</label>
             <div class="type-selector">
               <div class="type-option"
-                   *ngFor="let t of typeConges"
+                   *ngFor="let t of typeCongesDisponibles"
                    [class.selected]="congeForm.get('typeConge')?.value === t.value"
                    (click)="congeForm.get('typeConge')?.setValue(t.value)">
                 <span class="type-opt-icon" [innerHTML]="t.iconSvg | safeHtml"></span>
@@ -309,6 +315,12 @@ const SVG = {
             <span class="error-msg" *ngIf="isInvalid('typeConge')">
               Sélectionnez un type de congé
             </span>
+          </div>
+
+          <!-- ── MODIFICATION 2 : Bandeau préavis (ANNUEL / SANS_SOLDE uniquement) ── -->
+          <div *ngIf="typeNecessitePreavis" class="info-preavis">
+            <span [innerHTML]="icons.info | safeHtml"></span>
+            Ce type de congé nécessite un préavis minimum. Planifiez à l'avance.
           </div>
 
           <!-- Dates -->
@@ -337,10 +349,19 @@ const SVG = {
               <strong>{{ joursPreview() }} jour(s) ouvrable(s)</strong>
               <span>hors week-ends et jours fériés</span>
             </div>
-            <div class="jp-solde" [class.ok]="isSoldeOk()" [class.nok]="!isSoldeOk()">
-              <span [innerHTML]="isSoldeOk() ? icons.check : icons.x | safeHtml"></span>
-              {{ isSoldeOk() ? 'Solde suffisant' : 'Solde insuffisant' }}
-            </div>
+            <!-- Congé légal → pas de vérification de solde -->
+            <ng-container *ngIf="congeForm.get('typeConge')?.value === 'MATERNITE' || congeForm.get('typeConge')?.value === 'PATERNITE'; else soldeCheck">
+              <div class="jp-solde ok">
+                <span [innerHTML]="icons.check | safeHtml"></span>
+                Droit légal — sans limite de solde
+              </div>
+            </ng-container>
+            <ng-template #soldeCheck>
+              <div class="jp-solde" [class.ok]="isSoldeOk()" [class.nok]="!isSoldeOk()">
+                <span [innerHTML]="isSoldeOk() ? icons.check : icons.x | safeHtml"></span>
+                {{ isSoldeOk() ? 'Solde suffisant' : 'Solde insuffisant' }}
+              </div>
+            </ng-template>
           </div>
 
           <!-- Motif -->
@@ -350,6 +371,70 @@ const SVG = {
                       placeholder="Précisez le motif de votre demande..."
                       rows="3">
             </textarea>
+          </div>
+
+          <!-- ════════════════════════════════════════ -->
+          <!-- Pièce justificative (optionnelle)        -->
+          <!-- ════════════════════════════════════════ -->
+          <div class="form-group" style="margin-top: 4px;">
+            <label class="form-label">
+              Pièce justificative
+              <span style="font-size:11px; color: var(--text-light); font-weight:400; margin-left:6px;">
+                <ng-container [ngSwitch]="congeForm.get('typeConge')?.value">
+                  <ng-container *ngSwitchCase="'MALADIE'">(recommandé — certificat médical)</ng-container>
+                  <ng-container *ngSwitchCase="'MATERNITE'">(obligatoire — certificat médical de grossesse)</ng-container>
+                  <ng-container *ngSwitchCase="'PATERNITE'">(optionnel — acte de naissance ou certificat)</ng-container>
+                  <ng-container *ngSwitchDefault>(optionnel)</ng-container>
+                </ng-container>
+              </span>
+            </label>
+
+            <!-- Zone de dépôt / sélection -->
+            <div class="upload-zone"
+                 [class.has-file]="justificatifFile()"
+                 [class.maladie-hint]="congeForm.get('typeConge')?.value === 'MALADIE'"
+                 [class.maternite-hint]="congeForm.get('typeConge')?.value === 'MATERNITE'"
+                 (click)="fileInput.click()"
+                 (dragover)="$event.preventDefault()"
+                 (drop)="onFileDrop($event)">
+
+              <input #fileInput type="file"
+                     accept=".pdf,.jpg,.jpeg,.png"
+                     style="display:none"
+                     (change)="onFileChange($event)">
+
+              <ng-container *ngIf="!justificatifFile(); else filePreview">
+                <span [innerHTML]="icons.folder | safeHtml"></span>
+                <span *ngIf="congeForm.get('typeConge')?.value === 'MALADIE'"
+                      style="color: var(--warning, #f59e0b); font-size:12px; font-weight:600;">
+                  Certificat médical conseillé
+                </span>
+                <span *ngIf="congeForm.get('typeConge')?.value === 'MATERNITE'"
+                      style="color: #BE185D; font-size:12px; font-weight:600;">
+                  Certificat médical de grossesse requis
+                </span>
+                <span style="font-size:12px; color: var(--text-light);">
+                  PDF, JPG ou PNG · max 5 MB · cliquez ou glissez
+                </span>
+              </ng-container>
+
+              <ng-template #filePreview>
+                <span [innerHTML]="icons.check | safeHtml" style="color: var(--success, #22c55e);"></span>
+                <span style="font-size:13px; font-weight:500;">{{ justificatifFile()?.name }}</span>
+                <span style="font-size:11px; color: var(--text-light);">
+                  {{ (justificatifFile()!.size / 1024 / 1024 | number:'1.1-1') }} MB
+                </span>
+                <button type="button" class="btn-remove-file"
+                        (click)="removeFile($event)"
+                        [innerHTML]="icons.x | safeHtml">
+                </button>
+              </ng-template>
+            </div>
+
+            <!-- Erreur fichier -->
+            <div *ngIf="fileError()" class="file-error">
+              <span [innerHTML]="icons.alert | safeHtml"></span> {{ fileError() }}
+            </div>
           </div>
 
           <!-- Erreur / Succès -->
@@ -381,8 +466,9 @@ const SVG = {
 
     <!-- ========================= -->
     <!-- TAB : EN ATTENTE          -->
+    <!-- seulement accessible pour MANAGER -->
     <!-- ========================= -->
-    <div *ngIf="activeTab() === 'en-attente'" class="tab-content fade-in">
+    <div *ngIf="activeTab() === 'en-attente' && isManagerOnly()" class="tab-content fade-in">
 
       <div class="empty-state" *ngIf="enAttente().length === 0">
         <div class="empty-icon empty-icon-lg" [innerHTML]="icons.check | safeHtml"></div>
@@ -467,142 +553,13 @@ const SVG = {
       </div>
     </div>
 
-    <!-- ========================= -->
-    <!-- TAB : TOUTES (RH)         -->
-    <!-- ========================= -->
-    <div *ngIf="activeTab() === 'toutes'" class="tab-content fade-in">
-
-      <div class="filters-bar">
-        <div class="search-wrapper">
-          <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <input type="text" placeholder="Rechercher..."
-                 (input)="rhSearch.set($any($event.target).value)"
-                 class="search-input" />
-        </div>
-        <select class="filter-select"
-                (change)="rhFilterStatut.set($any($event.target).value)">
-          <option value="">Tous les statuts</option>
-          <option *ngFor="let s of statuts" [value]="s.value">{{ s.label }}</option>
-        </select>
-        <select class="filter-select"
-                (change)="rhFilterType.set($any($event.target).value)">
-          <option value="">Tous les types</option>
-          <option value="ANNUEL">Annuel</option>
-          <option value="MALADIE">Maladie</option>
-          <option value="EXCEPTIONNEL">Exceptionnel</option>
-        </select>
-      </div>
-
-      <div class="rh-stats">
-        <div class="rh-stat" *ngFor="let s of getRHStats()">
-          <span class="rh-stat-value" [class]="s.color">{{ s.value }}</span>
-          <span class="rh-stat-label">{{ s.label }}</span>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="table-container">
-          <table>
-            <thead>
-              <tr>
-                <th>Employé</th>
-                <th>Type</th>
-                <th>Période</th>
-                <th>Jours</th>
-                <th>Statut</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr *ngFor="let c of getRHFiltered()">
-                <td>
-                  <div class="user-cell">
-                    <div class="mini-avatar">{{ getInitiales(c) }}</div>
-                    <div>
-                      <strong>{{ c.employeNom }} {{ c.employePrenom }}</strong>
-                      <small class="d-block text-light">{{ c.employeDepartement }}</small>
-                    </div>
-                  </div>
-                </td>
-                <td>
-                  <span class="type-chip">
-                    <span [innerHTML]="getTypeIconSvg(c.typeConge) | safeHtml"></span>
-                    {{ c.typeConge }}
-                  </span>
-                </td>
-                <td>{{ c.dateDebut | date:'dd/MM/yy' }} → {{ c.dateFin | date:'dd/MM/yy' }}</td>
-                <td><strong>{{ c.joursOuvrables }}j</strong></td>
-                <td>
-                  <span class="badge" [class]="getBadgeClass(c.statut)">
-                    {{ getStatutLabel(c.statut) }}
-                  </span>
-                </td>
-                <td>
-                  <button class="btn-action"
-                          *ngIf="c.statut === 'EN_ATTENTE_RH'"
-                          (click)="ouvrirValidationRH(c)">
-                    <span [innerHTML]="icons.note | safeHtml"></span> Traiter
-                  </button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <!-- Modal validation RH -->
-      <div class="modal-overlay" *ngIf="selectedCongeRH()"
-           (click)="selectedCongeRH.set(null)">
-        <div class="modal" (click)="$event.stopPropagation()">
-          <div class="modal-header">
-            <h3>
-              <span [innerHTML]="icons.note | safeHtml"></span>
-              Valider la demande
-            </h3>
-            <button class="modal-close" (click)="selectedCongeRH.set(null)"
-                    [innerHTML]="icons.close | safeHtml">
-            </button>
-          </div>
-          <div class="modal-body">
-            <div class="modal-info">
-              <p><strong>Employé :</strong> {{ selectedCongeRH()?.employeNom }} {{ selectedCongeRH()?.employePrenom }}</p>
-              <p><strong>Type :</strong> {{ selectedCongeRH()?.typeConge }}</p>
-              <p><strong>Période :</strong> {{ selectedCongeRH()?.dateDebut | date:'dd/MM/yyyy' }} → {{ selectedCongeRH()?.dateFin | date:'dd/MM/yyyy' }}</p>
-              <p><strong>Durée :</strong> {{ selectedCongeRH()?.joursOuvrables }} jour(s)</p>
-              <p *ngIf="selectedCongeRH()?.commentaireManager">
-                <strong>Avis Manager :</strong> {{ selectedCongeRH()?.commentaireManager }}
-              </p>
-            </div>
-            <div class="form-group" style="margin-top:16px">
-              <label>Commentaire RH</label>
-              <textarea [(ngModel)]="validationCommentaire"
-                        placeholder="Commentaire..." rows="3">
-              </textarea>
-            </div>
-          </div>
-          <div class="modal-footer">
-            <button class="btn btn-danger" (click)="validerRH(false)"
-                    [disabled]="validationLoading()">
-              <span [innerHTML]="icons.x | safeHtml"></span> Rejeter
-            </button>
-            <button class="btn btn-primary" (click)="validerRH(true)"
-                    [disabled]="validationLoading()">
-              <span *ngIf="!validationLoading()">
-                <span [innerHTML]="icons.check | safeHtml"></span> Valider
-              </span>
-              <span *ngIf="validationLoading()" class="spinner"></span>
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
 
     <!-- ========================= -->
     <!-- TAB : CALENDRIER          -->
+    <!-- seulement accessible pour MANAGER -->
     <!-- ========================= -->
-    <div *ngIf="activeTab() === 'calendrier'" class="tab-content fade-in">
+    <div *ngIf="activeTab() === 'calendrier' && isManagerOnly()" class="tab-content fade-in">
 
-      <!-- ── IMPROVED: header with "Aujourd'hui" button ── -->
       <div class="calendrier-header">
         <button class="btn btn-outline" (click)="prevMonth()">
           <span [innerHTML]="icons.chevLeft | safeHtml"></span> Précédent
@@ -622,7 +579,6 @@ const SVG = {
         </button>
       </div>
 
-      <!-- ── IMPROVED: filters bar (type + département) ── -->
       <div class="cal-filters">
         <div class="cal-filter-label">
           <span [innerHTML]="icons.filter | safeHtml"></span> Filtrer :
@@ -636,7 +592,7 @@ const SVG = {
           <button class="cal-chip cal-chip-annuel"
                   [class.active]="calFilterType() === 'ANNUEL'"
                   (click)="calFilterType.set('ANNUEL')">
-            Congé Annuel
+            Annuel
           </button>
           <button class="cal-chip cal-chip-maladie"
                   [class.active]="calFilterType() === 'MALADIE'"
@@ -648,6 +604,16 @@ const SVG = {
                   (click)="calFilterType.set('EXCEPTIONNEL')">
             Exceptionnel
           </button>
+          <button class="cal-chip cal-chip-maternite"
+                  [class.active]="calFilterType() === 'MATERNITE'"
+                  (click)="calFilterType.set('MATERNITE')">
+            Maternité
+          </button>
+          <button class="cal-chip cal-chip-paternite"
+                  [class.active]="calFilterType() === 'PATERNITE'"
+                  (click)="calFilterType.set('PATERNITE')">
+            Paternité
+          </button>
         </div>
 
         <select class="filter-select filter-select-sm"
@@ -658,12 +624,27 @@ const SVG = {
         </select>
       </div>
 
+      <!-- Résumé du mois -->
+      <div class="cal-summary-bar" *ngIf="getCalSummary().total > 0">
+        <div class="cal-summary-item">
+          <span class="cal-summary-count">{{ getCalSummary().total }}</span>
+          <span class="cal-summary-label">congé(s) ce mois</span>
+        </div>
+        <div class="cal-summary-item" *ngIf="getCalSummary().absToday > 0">
+          <span class="cal-summary-count cal-summary-today">{{ getCalSummary().absToday }}</span>
+          <span class="cal-summary-label">absent(s) aujourd'hui</span>
+        </div>
+        <div class="cal-summary-item" *ngFor="let s of getCalSummary().byType">
+          <div class="cal-summary-dot" [style.background]="getTypeColor(s.type)"></div>
+          <span class="cal-summary-label">{{ getTypeLabel(s.type) }} : <strong>{{ s.count }}</strong></span>
+        </div>
+      </div>
+
       <div class="card">
         <div class="calendrier-grid">
           <div class="cal-day-header" *ngFor="let j of joursSemaine">{{ j }}</div>
           <div class="cal-day empty" *ngFor="let e of getEmptyDays()"></div>
 
-          <!-- ── IMPROVED: each day uses enhanced helpers ── -->
           <div class="cal-day"
                *ngFor="let day of getDaysInMonth()"
                [class.today]="isToday(day)"
@@ -671,28 +652,34 @@ const SVG = {
                [class.has-conge]="hasConge(day)">
             <span class="cal-day-num">{{ day }}</span>
             <div class="cal-events">
-              <!-- Show first 3 badges -->
               <div class="cal-event"
                    *ngFor="let c of getCongesForDayVisible(day)"
                    [class]="'cal-event cal-event-' + c.typeConge.toLowerCase()"
                    [title]="getTooltipText(c)">
                 <div class="cal-event-avatar">{{ getInitiales(c) }}</div>
-                <span>{{ c.employeNom }}</span>
-
-                <!-- ── IMPROVED: inline tooltip ── -->
+                <span class="cal-event-name">{{ c.employeNom }}</span>
+                <span class="cal-event-type-badge">{{ getTypeShort(c.typeConge) }}</span>
                 <div class="cal-tooltip">
-                  <div class="cal-tooltip-name">{{ c.employeNom }} {{ c.employePrenom }}</div>
-                  <div class="cal-tooltip-type">{{ getTypeLabel(c.typeConge) }}</div>
-                  <div class="cal-tooltip-dates">
-                    {{ c.dateDebut | date:'dd/MM/yyyy' }} → {{ c.dateFin | date:'dd/MM/yyyy' }}
-                    ({{ c.joursOuvrables }}j)
+                  <div class="cal-tooltip-header">
+                    <div class="cal-tooltip-avatar">{{ getInitiales(c) }}</div>
+                    <div>
+                      <div class="cal-tooltip-name">{{ c.employeNom }} {{ c.employePrenom }}</div>
+                      <div class="cal-tooltip-dept" *ngIf="c.employeDepartement">{{ c.employeDepartement }}</div>
+                    </div>
                   </div>
-                  <div class="cal-tooltip-motif" *ngIf="c.motif">{{ c.motif }}</div>
-                  <div class="cal-tooltip-dept" *ngIf="c.employeDepartement">{{ c.employeDepartement }}</div>
+                  <div class="cal-tooltip-divider"></div>
+                  <div class="cal-tooltip-type">
+                    <span class="cal-tooltip-type-dot" [style.background]="getTypeColor(c.typeConge)"></span>
+                    {{ getTypeLabel(c.typeConge) }}
+                  </div>
+                  <div class="cal-tooltip-dates">
+                    📅 {{ c.dateDebut | date:'dd/MM/yyyy' }} → {{ c.dateFin | date:'dd/MM/yyyy' }}
+                  </div>
+                  <div class="cal-tooltip-duration">⏱ {{ c.joursOuvrables }} jour(s) ouvrable(s)</div>
+                  <div class="cal-tooltip-motif" *ngIf="c.motif">💬 {{ c.motif }}</div>
                 </div>
               </div>
 
-              <!-- ── IMPROVED: overflow +N badge ── -->
               <div class="cal-overflow"
                    *ngIf="getCongesOverflowCount(day) > 0"
                    (click)="openOverflowModal(day)">
@@ -702,19 +689,24 @@ const SVG = {
           </div>
         </div>
 
-        <!-- ── IMPROVED: legend with color-coded types ── -->
         <div class="cal-legend">
           <div class="cal-legend-item">
             <div class="cal-legend-dot today-dot"></div><span>Aujourd'hui</span>
           </div>
           <div class="cal-legend-item">
-            <div class="cal-legend-dot annuel-dot"></div><span>Congé Annuel</span>
+            <div class="cal-legend-dot annuel-dot"></div><span>Annuel</span>
           </div>
           <div class="cal-legend-item">
-            <div class="cal-legend-dot maladie-dot"></div><span>Congé Maladie</span>
+            <div class="cal-legend-dot maladie-dot"></div><span>Maladie</span>
           </div>
           <div class="cal-legend-item">
             <div class="cal-legend-dot exception-dot"></div><span>Exceptionnel</span>
+          </div>
+          <div class="cal-legend-item">
+            <div class="cal-legend-dot maternite-dot"></div><span>Maternité</span>
+          </div>
+          <div class="cal-legend-item">
+            <div class="cal-legend-dot paternite-dot"></div><span>Paternité</span>
           </div>
           <div class="cal-legend-item">
             <div class="cal-legend-dot weekend-dot"></div><span>Week-end</span>
@@ -722,7 +714,7 @@ const SVG = {
         </div>
       </div>
 
-      <!-- ── IMPROVED: overflow modal ── -->
+      <!-- overflow modal -->
       <div class="modal-overlay" *ngIf="overflowDay() !== null"
            (click)="overflowDay.set(null)">
         <div class="modal modal-sm" (click)="$event.stopPropagation()">
@@ -1073,6 +1065,36 @@ const SVG = {
 
     .form-actions { display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px; }
 
+    // ===== UPLOAD ZONE =====
+    .upload-zone {
+      display: flex; flex-direction: column; align-items: center; gap: 6px;
+      padding: 20px; border: 2px dashed var(--gray-mid, #e2e8f0);
+      border-radius: 10px; cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+      background: var(--gray-light, #f8fafc);
+      text-align: center; position: relative;
+
+      &:hover { border-color: var(--primary); background: var(--accent); }
+      &.has-file {
+        border-color: var(--success); background: #f0fdf4; border-style: solid;
+      }
+      &.maladie-hint:not(.has-file) {
+        border-color: var(--warning, #f59e0b); background: #fffbeb;
+      }
+    }
+
+    .btn-remove-file {
+      position: absolute; top: 8px; right: 8px;
+      background: none; border: none; cursor: pointer;
+      color: var(--text-light); padding: 2px;
+      &:hover { color: var(--danger); }
+    }
+
+    .file-error {
+      display: flex; align-items: center; gap: 6px;
+      margin-top: 4px; font-size: 12px; color: var(--danger);
+    }
+
     // ===== RH STATS =====
     .rh-stats { display: flex; gap: 16px; margin-bottom: 16px; flex-wrap: wrap; }
 
@@ -1131,8 +1153,6 @@ const SVG = {
     }
 
     // ===== CALENDRIER =====
-
-    /* ── NEW: header center with "Aujourd'hui" button ── */
     .calendrier-header {
       display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;
       .cal-header-center {
@@ -1141,7 +1161,6 @@ const SVG = {
       }
     }
 
-    /* "Aujourd'hui" pill button */
     .btn-today {
       display: inline-flex; align-items: center; gap: 5px;
       padding: 5px 14px; border-radius: 20px; border: none;
@@ -1151,7 +1170,6 @@ const SVG = {
       &:hover { background: var(--primary-dark); transform: scale(1.04); }
     }
 
-    /* ── NEW: filter chips bar ── */
     .cal-filters {
       display: flex; align-items: center; gap: 10px;
       margin-bottom: 16px; flex-wrap: wrap;
@@ -1177,12 +1195,11 @@ const SVG = {
     .cal-chip-annuel.active       { background: #2D7A4F; }
     .cal-chip-maladie.active      { background: #C0392B; }
     .cal-chip-exception.active    { background: #D97706; }
+    .cal-chip-maternite.active    { background: #BE185D; }
+    .cal-chip-paternite.active    { background: #1D4ED8; }
 
-    .filter-select-sm {
-      padding: 6px 10px; font-size: 12px;
-    }
+    .filter-select-sm { padding: 6px 10px; font-size: 12px; }
 
-    /* ── Calendar grid (unchanged layout) ── */
     .calendrier-grid {
       display: grid; grid-template-columns: repeat(7, 1fr);
       gap: 1px; background: var(--gray-mid);
@@ -1206,11 +1223,11 @@ const SVG = {
 
     .cal-events { margin-top: 4px; display: flex; flex-direction: column; gap: 2px; }
 
-    /* ── NEW: color-coded event badges by type ── */
     .cal-event {
       display: flex; align-items: center; gap: 4px;
-      border-radius: 4px; padding: 2px 6px; font-size: 10px; font-weight: 600;
+      border-radius: 5px; padding: 3px 6px; font-size: 10px; font-weight: 600;
       position: relative; cursor: default;
+      white-space: nowrap; overflow: hidden; max-width: 100%;
 
       .cal-event-avatar {
         width: 16px; height: 16px; border-radius: 50%;
@@ -1219,56 +1236,79 @@ const SVG = {
         background: rgba(255,255,255,0.3);
       }
 
-      /* Annuel = green */
-      &.cal-event-annuel {
-        background: #2D7A4F; color: white;
-        .cal-event-avatar { background: rgba(255,255,255,0.25); }
+      .cal-event-name { flex: 1; overflow: hidden; text-overflow: ellipsis; }
+
+      .cal-event-type-badge {
+        font-size: 8px; font-weight: 800; padding: 1px 4px;
+        background: rgba(255,255,255,0.25); border-radius: 3px;
+        flex-shrink: 0; letter-spacing: 0.3px;
       }
 
-      /* Maladie = red */
-      &.cal-event-maladie {
-        background: #C0392B; color: white;
-        .cal-event-avatar { background: rgba(255,255,255,0.25); }
-      }
-
-      /* Exceptionnel = amber */
-      &.cal-event-exceptionnel {
-        background: #D97706; color: white;
-        .cal-event-avatar { background: rgba(255,255,255,0.25); }
-      }
-
-      /* Fallback */
-      &:not(.cal-event-annuel):not(.cal-event-maladie):not(.cal-event-exceptionnel) {
+      &.cal-event-annuel      { background: #2D7A4F; color: white; }
+      &.cal-event-maladie     { background: #C0392B; color: white; }
+      &.cal-event-exceptionnel { background: #D97706; color: white; }
+      &.cal-event-maternite   { background: #BE185D; color: white; }
+      &.cal-event-paternite   { background: #1D4ED8; color: white; }
+      &.cal-event-sans_solde  { background: #6B7280; color: white; }
+      &:not(.cal-event-annuel):not(.cal-event-maladie):not(.cal-event-exceptionnel):not(.cal-event-maternite):not(.cal-event-paternite):not(.cal-event-sans_solde) {
         background: var(--primary); color: white;
       }
 
-      /* ── NEW: CSS tooltip on hover ── */
       &:hover .cal-tooltip { opacity: 1; visibility: visible; transform: translateY(0); }
     }
 
-    /* ── NEW: tooltip bubble ── */
     .cal-tooltip {
-      position: absolute; bottom: calc(100% + 6px); left: 0;
-      background: #1a202c; color: white; border-radius: 10px;
-      padding: 10px 12px; min-width: 200px; z-index: 100;
-      opacity: 0; visibility: hidden; transform: translateY(4px);
-      transition: all 0.15s ease; pointer-events: none;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+      position: absolute; bottom: calc(100% + 8px); left: 0;
+      background: #1a202c; color: white; border-radius: 12px;
+      padding: 12px 14px; min-width: 220px; z-index: 100;
+      opacity: 0; visibility: hidden; transform: translateY(6px);
+      transition: all 0.18s ease; pointer-events: none;
+      box-shadow: 0 12px 32px rgba(0,0,0,0.35);
 
-      /* arrow */
       &::after {
-        content: ''; position: absolute; top: 100%; left: 12px;
-        border: 5px solid transparent; border-top-color: #1a202c;
+        content: ''; position: absolute; top: 100%; left: 14px;
+        border: 6px solid transparent; border-top-color: #1a202c;
       }
 
-      .cal-tooltip-name  { font-size: 12px; font-weight: 700; margin-bottom: 4px; }
-      .cal-tooltip-type  { font-size: 11px; opacity: 0.75; margin-bottom: 4px; }
-      .cal-tooltip-dates { font-size: 11px; opacity: 0.9; }
-      .cal-tooltip-motif { font-size: 11px; opacity: 0.75; margin-top: 4px; font-style: italic; }
-      .cal-tooltip-dept  { font-size: 10px; opacity: 0.6; margin-top: 3px; text-transform: uppercase; letter-spacing: 0.5px; }
+      .cal-tooltip-header {
+        display: flex; align-items: center; gap: 10px; margin-bottom: 8px;
+      }
+      .cal-tooltip-avatar {
+        width: 30px; height: 30px; border-radius: 50%;
+        background: linear-gradient(135deg, var(--primary), var(--secondary));
+        display: flex; align-items: center; justify-content: center;
+        font-size: 11px; font-weight: 700; flex-shrink: 0;
+      }
+      .cal-tooltip-divider { height: 1px; background: rgba(255,255,255,0.15); margin-bottom: 8px; }
+      .cal-tooltip-name  { font-size: 13px; font-weight: 700; }
+      .cal-tooltip-dept  { font-size: 10px; opacity: 0.6; text-transform: uppercase; letter-spacing: 0.5px; }
+      .cal-tooltip-type  { font-size: 11px; opacity: 0.9; margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
+      .cal-tooltip-type-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+      .cal-tooltip-dates { font-size: 11px; opacity: 0.85; margin-bottom: 3px; }
+      .cal-tooltip-duration { font-size: 11px; opacity: 0.75; margin-bottom: 3px; }
+      .cal-tooltip-motif { font-size: 11px; opacity: 0.7; font-style: italic; }
     }
 
-    /* ── NEW: overflow "+N autre(s)" button ── */
+    // ===== SUMMARY BAR =====
+    .cal-summary-bar {
+      display: flex; align-items: center; gap: 20px; flex-wrap: wrap;
+      background: white; border-radius: 12px; padding: 12px 20px;
+      margin-bottom: 16px; box-shadow: 0 2px 8px rgba(11,110,126,0.06);
+      border-left: 4px solid var(--primary);
+    }
+
+    .cal-summary-item {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 13px; color: var(--text);
+
+      .cal-summary-count {
+        font-size: 20px; font-weight: 800; color: var(--primary-dark);
+        &.cal-summary-today { color: #C0392B; }
+      }
+      .cal-summary-label { font-size: 12px; color: var(--text-light); }
+      .cal-summary-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    }
+
     .cal-overflow {
       font-size: 10px; font-weight: 700; color: var(--primary);
       background: var(--accent); border-radius: 4px;
@@ -1277,16 +1317,18 @@ const SVG = {
       &:hover { background: var(--primary); color: white; }
     }
 
-    /* ── NEW: overflow modal list ── */
     .overflow-list { display: flex; flex-direction: column; gap: 10px; }
 
     .overflow-item {
       display: flex; align-items: center; gap: 12px;
       padding: 12px; border-radius: 10px; background: var(--gray-light);
 
-      &.overflow-item-annuel     { border-left: 3px solid #2D7A4F; }
-      &.overflow-item-maladie    { border-left: 3px solid #C0392B; }
+      &.overflow-item-annuel      { border-left: 3px solid #2D7A4F; }
+      &.overflow-item-maladie     { border-left: 3px solid #C0392B; }
       &.overflow-item-exceptionnel { border-left: 3px solid #D97706; }
+      &.overflow-item-maternite   { border-left: 3px solid #BE185D; }
+      &.overflow-item-paternite   { border-left: 3px solid #1D4ED8; }
+      &.overflow-item-sans_solde  { border-left: 3px solid #6B7280; }
 
       .overflow-avatar {
         width: 36px; height: 36px; border-radius: 50%;
@@ -1303,18 +1345,19 @@ const SVG = {
       }
     }
 
-    /* ── NEW: type pill in overflow modal ── */
     .cal-type-pill {
       font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 10px;
       white-space: nowrap;
       &.cal-type-pill-annuel      { background: #C6F6D5; color: #276749; }
       &.cal-type-pill-maladie     { background: #FED7D7; color: #822727; }
       &.cal-type-pill-exceptionnel { background: #FEFCBF; color: #744210; }
+      &.cal-type-pill-maternite   { background: #FCE7F3; color: #9D174D; }
+      &.cal-type-pill-paternite   { background: #DBEAFE; color: #1E3A8A; }
+      &.cal-type-pill-sans_solde  { background: #F3F4F6; color: #374151; }
     }
 
-    /* ── IMPROVED: legend with type colors ── */
     .cal-legend {
-      display: flex; gap: 20px; padding: 16px; border-top: 1px solid var(--gray-mid); flex-wrap: wrap;
+      display: flex; gap: 16px; padding: 16px; border-top: 1px solid var(--gray-mid); flex-wrap: wrap;
 
       .cal-legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-light); }
       .cal-legend-dot {
@@ -1323,6 +1366,8 @@ const SVG = {
         &.annuel-dot    { background: #2D7A4F; }
         &.maladie-dot   { background: #C0392B; }
         &.exception-dot { background: #D97706; }
+        &.maternite-dot { background: #BE185D; }
+        &.paternite-dot { background: #1D4ED8; }
         &.weekend-dot   { background: #f0f0f0; border: 1px solid var(--gray-mid); }
       }
     }
@@ -1473,6 +1518,21 @@ const SVG = {
       box-shadow: 0 2px 12px rgba(11,110,126,0.08); margin-bottom: 20px;
     }
 
+    // ── MODIFICATION 3 : Style du bandeau préavis ──
+    .info-preavis {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 8px;
+      font-size: 12px;
+      color: #1d4ed8;
+      margin-bottom: 4px;
+      svg { display: block; flex-shrink: 0; }
+    }
+
     @keyframes spin   { to { transform: rotate(360deg); } }
     @keyframes fadeIn {
       from { opacity: 0; transform: translateY(8px); }
@@ -1484,13 +1544,15 @@ const SVG = {
 })
 export class CongesComponent implements OnInit {
 
-  private congeService = inject(CongeService);
-  private authService  = inject(AuthService);
-  private fb           = inject(FormBuilder);
+  private congeService  = inject(CongeService);
+  private authService   = inject(AuthService);
+  private profilService = inject(ProfilService);
+  private fb            = inject(FormBuilder);
 
   readonly icons = SVG;
 
-  role = this.authService.getRole();
+  role  = this.authService.getRole();
+  genre = signal<string>('');   // 'HOMME' | 'FEMME' | '' — chargé au ngOnInit
 
   activeTab         = signal<Tab>('mes-demandes');
   loading           = signal(true);
@@ -1509,21 +1571,22 @@ export class CongesComponent implements OnInit {
   rhSearch           = signal('');
   rhFilterStatut     = signal('');
   rhFilterType       = signal('');
-
-  // ── NEW: calendar filter signals ──
   calFilterType      = signal('');
   calFilterDept      = signal('');
-
-  // ── NEW: overflow modal signal ──
   overflowDay        = signal<number | null>(null);
 
   validatingId          = signal<number | null>(null);
   validationCommentaire = '';
   selectedCongeRH       = signal<DemandeConge | null>(null);
 
-  joursPreview = signal(0);
-  formError    = signal('');
-  formSuccess  = signal('');
+  joursPreview     = signal(0);
+  formError        = signal('');
+  formSuccess      = signal('');
+
+  // ── Pièce justificative ──
+  justificatifFile = signal<File | null>(null);
+  fileError        = signal('');
+  uploadingJustif  = signal(false);
 
   currentDate  = new Date();
   joursSemaine = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
@@ -1532,11 +1595,19 @@ export class CongesComponent implements OnInit {
     { show: false, message: '', type: 'success' }
   );
 
-  // Max badges shown per day cell before "+N"
   private readonly MAX_BADGES = 3;
 
   get minDate(): string {
     return new Date().toISOString().split('T')[0];
+  }
+
+  // ── MODIFICATION 1 : Préavis uniquement pour ANNUEL et SANS_SOLDE ──
+  private readonly TYPES_AVEC_PREAVIS = ['ANNUEL', 'SANS_SOLDE'];
+
+  get typeNecessitePreavis(): boolean {
+    return this.TYPES_AVEC_PREAVIS.includes(
+      this.congeForm.get('typeConge')?.value ?? ''
+    );
   }
 
   statuts = [
@@ -1547,6 +1618,16 @@ export class CongesComponent implements OnInit {
     { value: 'REJETEE',            label: 'Rejetée' },
     { value: 'ANNULEE',            label: 'Annulée' }
   ];
+
+  // Liste des types filtrée selon le genre de l'employé connecté
+  get typeCongesDisponibles() {
+    const g = this.genre();
+    return this.typeConges.filter(t => {
+      if (t.value === 'MATERNITE') return g === 'Femme';
+      if (t.value === 'PATERNITE') return g === 'Homme';
+      return true; // tous les autres types sont toujours visibles
+    });
+  }
 
   typeConges = [
     {
@@ -1562,17 +1643,17 @@ export class CongesComponent implements OnInit {
       iconSvg: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`
     },
     {
-      value: 'SANS_SOLDE', label: 'Congé Sans Solde',
-      iconSvg: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h16"/><path d="M12 4v16"/></svg>`
-    },
-    {
       value: 'MATERNITE', label: 'Congé Maternité',
-      iconSvg: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="10" r="3"/><path d="M12 13v7"/><path d="M9 20h6"/></svg>`
+      iconSvg: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="7" r="4"/><path d="M12 11c-4 0-7 2.5-7 5.5V19h14v-2.5c0-3-3-5.5-7-5.5z"/><path d="M10 15.5c0 1.1.9 2 2 2s2-.9 2-2"/></svg>`
     },
     {
       value: 'PATERNITE', label: 'Congé Paternité',
-      iconSvg: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2h8"/><path d="M12 2v20"/><path d="M8 22h8"/></svg>`
-    }
+      iconSvg: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="7" r="3"/><circle cx="16" cy="8" r="2.5"/><path d="M2 19v-1.5C2 14.9 5 13 9 13s7 1.9 7 4.5V19"/><path d="M18 11c2 0 4 1.2 4 3v1.5h-4"/></svg>`
+    },
+    {
+      value: 'SANS_SOLDE', label: 'Congé Sans Solde',
+      iconSvg: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h16"/><path d="M12 4v16"/></svg>`
+    },
   ];
 
   congeForm = this.fb.group({
@@ -1585,28 +1666,32 @@ export class CongesComponent implements OnInit {
   ngOnInit(): void { this.loadData(); }
 
   private loadData(): void {
+    // Charger le genre pour filtrer les types de congé (maternité/paternité)
+    this.profilService.getMonProfil().subscribe({
+      next: (p: any) => this.genre.set(p.genre ?? ''),
+      error: () => {}
+    });
+
     const obs: any = {
       soldes: this.congeService.getSoldes(),
       conges: this.congeService.getMesConges()
     };
-    if (this.isManagerOrAbove()) obs.attente = this.congeService.getEnAttenteManager();
-    if (this.isRHOrAdmin()) {
-      obs.toutes    = this.congeService.getToutesConges();
-      obs.attenteRH = this.congeService.getEnAttenteRH();
+
+    if (this.isManagerOnly()) {
+      obs.attente = this.congeService.getEnAttenteManager();
     }
 
     forkJoin(obs).subscribe({
       next: (data: any) => {
         this.soldes.set(data.soldes ?? []);
         this.mesDemandes.set(data.conges ?? []);
-        if (this.isRHOrAdmin()) {
-          this.toutesConges.set(data.toutes ?? []);
-          this.enAttente.set(data.attenteRH ?? []);
-        } else if (this.isManagerOrAbove()) {
+        if (this.isManagerOnly()) {
           this.enAttente.set(data.attente ?? []);
         }
         this.loading.set(false);
-        this.loadCalendrier();
+        if (this.isManagerOnly()) {
+          this.loadCalendrier();
+        }
       },
       error: () => this.loading.set(false)
     });
@@ -1646,6 +1731,8 @@ export class CongesComponent implements OnInit {
   isSoldeOk(): boolean {
     const type = this.congeForm.get('typeConge')?.value as string;
     if (!type) return true;
+    // Droits légaux sans compteur de solde → toujours OK
+    if (type === 'MATERNITE' || type === 'PATERNITE' || type === 'MALADIE' || type === 'SANS_SOLDE') return true;
     const solde = this.soldes().find(s => s.typeConge === type);
     if (!solde) return true;
     return this.getRestants(solde) >= this.joursPreview();
@@ -1658,18 +1745,70 @@ export class CongesComponent implements OnInit {
     const req = { ...this.congeForm.value, soumettre: !brouillon };
     this.congeService.creerDemande(req as any).subscribe({
       next: (data) => {
-        this.submitLoading.set(false);
-        this.formSuccess.set(brouillon ? 'Brouillon sauvegardé !' : 'Demande soumise avec succès !');
-        this.mesDemandes.update(d => [data, ...d]);
-        this.congeForm.reset();
-        this.joursPreview.set(0);
-        setTimeout(() => { this.formSuccess.set(''); this.setTab('mes-demandes'); }, 1500);
+        const file = this.justificatifFile();
+        if (file) {
+          this.congeService.uploadJustificatif(data.id, file).subscribe({
+            next: (res) => {
+              data.fichierJustificatif = res.justificatifUrl;
+              this.finishSubmit(data, brouillon);
+            },
+            error: () => {
+              this.finishSubmit(data, brouillon);
+              this.showToast('Demande créée mais l\'upload du justificatif a échoué.', 'error');
+            }
+          });
+        } else {
+          this.finishSubmit(data, brouillon);
+        }
       },
       error: (err) => {
         this.submitLoading.set(false);
         this.formError.set(err.error?.message ?? 'Erreur lors de la création.');
       }
     });
+  }
+
+  private finishSubmit(data: DemandeConge, brouillon: boolean): void {
+    this.submitLoading.set(false);
+    this.formSuccess.set(brouillon ? 'Brouillon sauvegardé !' : 'Demande soumise avec succès !');
+    this.mesDemandes.update(d => [data, ...d]);
+    this.congeForm.reset();
+    this.justificatifFile.set(null);
+    this.joursPreview.set(0);
+    setTimeout(() => { this.formSuccess.set(''); this.setTab('mes-demandes'); }, 1500);
+  }
+
+  // ── Gestion du fichier justificatif ──
+
+  onFileChange(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (input.files?.length) this.validateAndSetFile(input.files[0]);
+  }
+
+  onFileDrop(event: DragEvent): void {
+    event.preventDefault();
+    const file = event.dataTransfer?.files[0];
+    if (file) this.validateAndSetFile(file);
+  }
+
+  removeFile(event: MouseEvent): void {
+    event.stopPropagation();
+    this.justificatifFile.set(null);
+    this.fileError.set('');
+  }
+
+  private validateAndSetFile(file: File): void {
+    const allowed = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
+    if (!allowed.includes(file.type)) {
+      this.fileError.set('Format non autorisé. Utilisez PDF, JPG ou PNG.');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      this.fileError.set('Le fichier dépasse 5 MB.');
+      return;
+    }
+    this.fileError.set('');
+    this.justificatifFile.set(file);
   }
 
   soumettreConge(id: number): void {
@@ -1699,10 +1838,7 @@ export class CongesComponent implements OnInit {
 
   valider(id: number, approuve: boolean): void {
     this.validationLoading.set(true);
-    const service = this.isRHOrAdmin()
-      ? this.congeService.validerRH(id, { approuve, commentaire: this.validationCommentaire })
-      : this.congeService.validerManager(id, { approuve, commentaire: this.validationCommentaire });
-
+    const service = this.congeService.validerManager(id, { approuve, commentaire: this.validationCommentaire });
     service.subscribe({
       next: () => {
         this.validationLoading.set(false);
@@ -1750,13 +1886,11 @@ export class CongesComponent implements OnInit {
     this.loadCalendrier();
   }
 
-  // ── NEW: go back to today's month ──
   goToToday(): void {
     this.currentDate = new Date();
     this.loadCalendrier();
   }
 
-  // ── NEW: detect if we are already on the current month ──
   isCurrentMonth(): boolean {
     const now = new Date();
     return this.currentDate.getFullYear() === now.getFullYear()
@@ -1793,7 +1927,6 @@ export class CongesComponent implements OnInit {
     return this.getCongesForDayAll(day).length > 0;
   }
 
-  // ── Base filter shared by all day helpers ──
   private filterCalendrier(): DemandeConge[] {
     const type = this.calFilterType();
     const dept = this.calFilterDept();
@@ -1805,7 +1938,6 @@ export class CongesComponent implements OnInit {
     });
   }
 
-  // ── NEW: all congés for a day (filtered) ──
   getCongesForDayAll(day: number): DemandeConge[] {
     const date = new Date(this.currentDate.getFullYear(), this.currentDate.getMonth(), day);
     return this.filterCalendrier().filter(c => {
@@ -1815,23 +1947,19 @@ export class CongesComponent implements OnInit {
     });
   }
 
-  // ── NEW: visible badges capped at MAX_BADGES ──
   getCongesForDayVisible(day: number): DemandeConge[] {
     return this.getCongesForDayAll(day).slice(0, this.MAX_BADGES);
   }
 
-  // ── NEW: count of hidden badges ──
   getCongesOverflowCount(day: number): number {
     const total = this.getCongesForDayAll(day).length;
     return total > this.MAX_BADGES ? total - this.MAX_BADGES : 0;
   }
 
-  // ── NEW: open overflow modal ──
   openOverflowModal(day: number): void {
     this.overflowDay.set(day);
   }
 
-  // ── NEW: tooltip text (native fallback, also used by title attr) ──
   getTooltipText(c: DemandeConge): string {
     const d1 = new Date(c.dateDebut).toLocaleDateString('fr-FR');
     const d2 = new Date(c.dateFin).toLocaleDateString('fr-FR');
@@ -1840,7 +1968,38 @@ export class CongesComponent implements OnInit {
     return txt;
   }
 
-  // ── NEW: list unique departments from calendrier data ──
+  getTypeColor(type: string): string {
+    const map: Record<string, string> = {
+      ANNUEL: '#2D7A4F', MALADIE: '#C0392B', EXCEPTIONNEL: '#D97706',
+      MATERNITE: '#BE185D', PATERNITE: '#1D4ED8', SANS_SOLDE: '#6B7280',
+    };
+    return map[type] ?? '#374151';
+  }
+
+  getTypeShort(type: string): string {
+    const map: Record<string, string> = {
+      ANNUEL: 'ANN', MALADIE: 'MAL', EXCEPTIONNEL: 'EXC',
+      MATERNITE: 'MAT', PATERNITE: 'PAT', SANS_SOLDE: 'SS',
+    };
+    return map[type] ?? type.slice(0, 3);
+  }
+
+  getCalSummary(): { total: number; absToday: number; byType: { type: string; count: number }[] } {
+    const filtered = this.filterCalendrier();
+    const today = new Date();
+    const absToday = this.isCurrentMonth()
+      ? filtered.filter(c => {
+          const debut = new Date(c.dateDebut);
+          const fin   = new Date(c.dateFin);
+          return debut <= today && today <= fin;
+        }).length
+      : 0;
+    const byTypeMap: Record<string, number> = {};
+    filtered.forEach(c => { byTypeMap[c.typeConge] = (byTypeMap[c.typeConge] ?? 0) + 1; });
+    const byType = Object.entries(byTypeMap).map(([type, count]) => ({ type, count }));
+    return { total: filtered.length, absToday, byType };
+  }
+
   getDepartements(): string[] {
     const depts = this.calendrierConges()
       .map(c => c.employeDepartement)
@@ -1848,9 +2007,19 @@ export class CongesComponent implements OnInit {
     return [...new Set(depts)].sort();
   }
 
-  // ===== UNCHANGED HELPERS =====
-  isManagerOrAbove(): boolean { return ['MANAGER','RH','ADMIN'].includes(this.role); }
-  isRHOrAdmin(): boolean      { return ['RH','ADMIN'].includes(this.role); }
+  // ===== ROLE HELPERS =====
+
+  isManagerOnly(): boolean {
+    return this.role === 'MANAGER';
+  }
+
+  isRHOrAdmin(): boolean {
+    return ['RH', 'ADMIN'].includes(this.role);
+  }
+
+  isManagerOrAbove(): boolean {
+    return ['MANAGER', 'RH', 'ADMIN'].includes(this.role);
+  }
 
   isInvalid(field: string): boolean {
     const c = this.congeForm.get(field);
@@ -1873,9 +2042,13 @@ export class CongesComponent implements OnInit {
     return 'good';
   }
 
-  getSoldeForType(type: string): number {
+  getSoldeForType(type: string): string {
+    if (type === 'MATERNITE' || type === 'PATERNITE'
+     || type === 'MALADIE'   || type === 'SANS_SOLDE') {
+      return 'Droit légal';
+    }
     const s = this.soldes().find(x => x.typeConge === type);
-    return s ? this.getRestants(s) : 0;
+    return s ? this.getRestants(s) + ' j restants' : '—';
   }
 
   getTypeIconSvg(type: string): string {
@@ -1883,21 +2056,18 @@ export class CongesComponent implements OnInit {
       ANNUEL:       `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 12c0 4.4-3.6 8-8 8"/><path d="M2 12h20"/><path d="M12 2a10 10 0 0 1 10 10"/><path d="M7 2.2A10 10 0 0 0 2 12"/></svg>`,
       MALADIE:      `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6v6"/><path d="M16 6v6"/><path d="M2 12h20"/><rect x="4" y="4" width="16" height="16" rx="2"/></svg>`,
       EXCEPTIONNEL: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`,
+      MATERNITE:    `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="7" r="4"/><path d="M12 11c-4 0-7 2.5-7 5.5V19h14v-2.5c0-3-3-5.5-7-5.5z"/><path d="M10 15.5c0 1.1.9 2 2 2s2-.9 2-2"/></svg>`,
+      PATERNITE:    `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="7" r="3"/><circle cx="16" cy="8" r="2.5"/><path d="M2 19v-1.5C2 14.9 5 13 9 13s7 1.9 7 4.5V19"/><path d="M18 11c2 0 4 1.2 4 3v1.5h-4"/></svg>`,
       SANS_SOLDE:   `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h16"/><path d="M12 4v16"/></svg>`,
-      MATERNITE:    `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="10" r="3"/><path d="M12 13v7"/><path d="M9 20h6"/></svg>`,
-      PATERNITE:    `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2h8"/><path d="M12 2v20"/><path d="M8 22h8"/></svg>`
     };
     return map[type] ?? `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>`;
   }
 
   getTypeLabel(type: string): string {
     const map: Record<string, string> = {
-      ANNUEL: 'Congé Annuel',
-      MALADIE: 'Congé Maladie',
-      EXCEPTIONNEL: 'Congé Exceptionnel',
-      SANS_SOLDE: 'Congé Sans Solde',
-      MATERNITE: 'Congé Maternité',
-      PATERNITE: 'Congé Paternité'
+      ANNUEL: 'Congé Annuel', MALADIE: 'Congé Maladie',
+      EXCEPTIONNEL: 'Congé Exceptionnel', SANS_SOLDE: 'Congé Sans Solde',
+      MATERNITE: 'Congé Maternité', PATERNITE: 'Congé Paternité'
     };
     return map[type] ?? type;
   }
@@ -1964,10 +2134,10 @@ export class CongesComponent implements OnInit {
   getRHStats() {
     const all = this.toutesConges();
     return [
-      { value: all.length,                                           label: 'Total',         color: 'primary' },
-      { value: all.filter(c => c.statut === 'EN_ATTENTE_RH').length, label: 'En attente RH', color: 'warning' },
-      { value: all.filter(c => c.statut === 'VALIDEE').length,       label: 'Validées',      color: 'success' },
-      { value: all.filter(c => c.statut === 'REJETEE').length,       label: 'Rejetées',      color: 'danger'  }
+      { value: all.length,                                            label: 'Total',         color: 'primary' },
+      { value: all.filter(c => c.statut === 'EN_ATTENTE_RH').length,  label: 'En attente RH', color: 'warning' },
+      { value: all.filter(c => c.statut === 'VALIDEE').length,        label: 'Validées',      color: 'success' },
+      { value: all.filter(c => c.statut === 'REJETEE').length,        label: 'Rejetées',      color: 'danger'  }
     ];
   }
 

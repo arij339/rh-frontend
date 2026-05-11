@@ -4,7 +4,7 @@ import { Observable } from 'rxjs';
 import {
   AvanceSalaire, AvanceRequest,
   SimulationRequest, SimulationResponse,
-  AvisManagerRequest, TraiterAvanceRequest
+  TraiterAvanceRequest
 } from '../models/avance.model';
 
 @Injectable({ providedIn: 'root' })
@@ -32,19 +32,6 @@ export class AvanceService {
   annuler(id: number): Observable<AvanceSalaire> {
     return this.http.put<AvanceSalaire>(
       `${this.API}/employe/avances/${id}/annuler`, {});
-  }
-
-  // ===== MANAGER =====
-  getEnAttenteManager(): Observable<AvanceSalaire[]> {
-    return this.http.get<AvanceSalaire[]>(
-      `${this.API}/manager/avances/en-attente`);
-  }
-
-  donnerAvis(
-    id: number, req: AvisManagerRequest
-  ): Observable<AvanceSalaire> {
-    return this.http.put<AvanceSalaire>(
-      `${this.API}/manager/avances/${id}/avis`, req);
   }
 
   // ===== RH =====

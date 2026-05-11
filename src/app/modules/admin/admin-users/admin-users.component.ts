@@ -36,6 +36,7 @@ const SVG = {
   warn:     `<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`,
   reset:    `<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3"/></svg>`,
   phone:    `<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.35 2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.6a16 16 0 0 0 6 6l.92-.92a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>`,
+  trash:    `<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>`,
 };
 
 @Component({
@@ -109,7 +110,7 @@ const SVG = {
           </div>
 
           <div class="form-group">
-            <label>Email <span class="req">*</span></label>
+            <label>Email <span class="optional">(optionnel)</span></label>
             <input type="email" formControlName="email"
                    placeholder="email@entreprise.tn"
                    [class.input-err]="inv('email')" />
@@ -143,6 +144,26 @@ const SVG = {
           <div class="form-group">
             <label>Date d'embauche</label>
             <input type="date" formControlName="dateEmbauche" />
+          </div>
+
+          <!-- ═══ SOCIÉTÉ (select dynamique + champ "Autre") ═══ -->
+          <div class="form-group">
+            <label>Société</label>
+            <select formControlName="societe">
+              <option value="">— Choisir ou laisser vide —</option>
+              <option *ngFor="let s of getSocietesDisponibles()" [value]="s">
+                {{ s }}
+              </option>
+              <option value="__autre__">Autre (saisir manuellement)</option>
+            </select>
+          </div>
+
+          <!-- Champ texte si "Autre" sélectionné -->
+          <div class="form-group"
+               *ngIf="form.get('societe')?.value === '__autre__'">
+            <label>Nom de la société</label>
+            <input formControlName="societeCustom"
+                   placeholder="Nom de la nouvelle société" />
           </div>
 
           <div class="form-group" *ngIf="showManagerField()">
@@ -321,7 +342,7 @@ const SVG = {
             <td (click)="$event.stopPropagation()">
               <div class="act-row">
 
-                <!-- ✏️ Modifier le profil → ouvre modal -->
+                <!-- ✏️ Modifier le profil -->
                 <button class="act-btn act-edit"
                         title="Modifier le profil"
                         (click)="openModal(u)">
@@ -332,8 +353,7 @@ const SVG = {
                 <button class="act-btn"
                         [class.act-danger]="u.enabled"
                         [class.act-success]="!u.enabled"
-                        [title]="u.enabled
-                          ? 'Désactiver' : 'Activer'"
+                        [title]="u.enabled ? 'Désactiver' : 'Activer'"
                         (click)="toggleStatus(u)">
                   <span [innerHTML]="svg.power | safeHtml"></span>
                 </button>
@@ -352,6 +372,18 @@ const SVG = {
                         (click)="resetPwd(u.id)">
                   <span [innerHTML]="svg.key | safeHtml"></span>
                 </button>
+
+                <!-- 🗑️ Supprimer -->
+                <button class="act-btn act-delete"
+                        title="Supprimer le compte"
+                        (click)="deleteTarget.set(u)">
+                  <span [innerHTML]="svg.trash | safeHtml"></span>
+                </button>
+                <button class="act-btn act-warning"
+        title="Définir mot de passe"
+        (click)="openSetPassword(u)">
+  <span [innerHTML]="svg.key | safeHtml"></span>
+</button>
 
               </div>
             </td>
@@ -378,17 +410,17 @@ const SVG = {
       </div>
     </div>
 
-    <!-- ═══════════════════════════════════════════════════════
+    <!-- ═══════════════════════════════════════════════════════════════
          MODAL — MODIFIER LE PROFIL
-    ════════════════════════════════════════════════════════ -->
+    ════════════════════════════════════════════════════════════════ -->
 
-    <!-- Overlay -->
+    <!-- Overlay edit -->
     <div class="modal-overlay"
          *ngIf="modalOpen()"
          (click)="closeModal()">
     </div>
 
-    <!-- Modal -->
+    <!-- Modal edit -->
     <div class="edit-modal" *ngIf="modalOpen()">
 
       <!-- En-tête -->
@@ -420,7 +452,7 @@ const SVG = {
       <div class="modal-body" *ngIf="editForm">
         <form [formGroup]="editForm" (ngSubmit)="onSaveEdit()">
 
-          <!-- ── Tabs navigation ── -->
+          <!-- Tabs -->
           <div class="modal-tabs">
             <button type="button"
                     class="mt-btn"
@@ -438,10 +470,7 @@ const SVG = {
             </button>
           </div>
 
-          <!-- ────────────────────────────────────────
-               TAB 1 — INFOS PERSONNELLES
-               Nom, Prénom, CIN, Email, Téléphone, Adresse
-          ──────────────────────────────────────── -->
+          <!-- TAB 1 — INFOS PERSONNELLES -->
           <div class="tab-content" *ngIf="editTab() === 'perso'">
 
             <div class="section-label">
@@ -454,18 +483,14 @@ const SVG = {
                 <input formControlName="nom"
                        placeholder="Nom de famille"
                        [class.input-err]="invE('nom')" />
-                <span class="err-txt" *ngIf="invE('nom')">
-                  Requis
-                </span>
+                <span class="err-txt" *ngIf="invE('nom')">Requis</span>
               </div>
               <div class="form-group">
                 <label>Prénom <span class="req">*</span></label>
                 <input formControlName="prenom"
                        placeholder="Prénom"
                        [class.input-err]="invE('prenom')" />
-                <span class="err-txt" *ngIf="invE('prenom')">
-                  Requis
-                </span>
+                <span class="err-txt" *ngIf="invE('prenom')">Requis</span>
               </div>
               <div class="form-group">
                 <label>
@@ -475,16 +500,11 @@ const SVG = {
                 <input formControlName="cin"
                        placeholder="12345678"
                        [class.input-err]="invE('cin')" />
-                <span class="err-txt" *ngIf="invE('cin')">
-                  Requis
-                </span>
+                <span class="err-txt" *ngIf="invE('cin')">Requis</span>
               </div>
               <div class="form-group">
-                <label>
-                  Date de naissance
-                </label>
-                <input type="date"
-                       formControlName="dateNaissance" />
+                <label>Date de naissance</label>
+                <input type="date" formControlName="dateNaissance" />
               </div>
             </div>
 
@@ -494,13 +514,11 @@ const SVG = {
             </div>
             <div class="modal-grid">
               <div class="form-group">
-                <label>Email <span class="req">*</span></label>
+                <label>Email <span class="optional">(optionnel)</span></label>
                 <input type="email" formControlName="email"
                        placeholder="email@entreprise.tn"
                        [class.input-err]="invE('email')" />
-                <span class="err-txt" *ngIf="invE('email')">
-                  Email invalide
-                </span>
+                <span class="err-txt" *ngIf="invE('email')">Email invalide</span>
               </div>
               <div class="form-group">
                 <label>Téléphone</label>
@@ -516,10 +534,7 @@ const SVG = {
 
           </div>
 
-          <!-- ────────────────────────────────────────
-               TAB 2 — INFOS PROFESSIONNELLES
-               Poste, Département, Salaire, Date embauche, Manager
-          ──────────────────────────────────────── -->
+          <!-- TAB 2 — INFOS PROFESSIONNELLES -->
           <div class="tab-content" *ngIf="editTab() === 'pro'">
 
             <div class="section-label">
@@ -538,9 +553,13 @@ const SVG = {
                        placeholder="IT, RH, Finance..." />
               </div>
               <div class="form-group">
+                <label>Société</label>
+                <input formControlName="societe"
+                       placeholder="Filiale Tunis, Siège Social..." />
+              </div>
+              <div class="form-group">
                 <label>Date d'embauche</label>
-                <input type="date"
-                       formControlName="dateEmbauche" />
+                <input type="date" formControlName="dateEmbauche" />
               </div>
               <div class="form-group">
                 <label>Type de contrat</label>
@@ -590,21 +609,19 @@ const SVG = {
               </div>
             </div>
 
-            <!-- Récapitulatif salaire -->
+            <!-- Récap salaire -->
             <div class="salary-recap"
                  *ngIf="editForm.get('salaireBase')?.value">
               <div class="sr-row">
                 <span>Salaire brut mensuel</span>
                 <strong>
-                  {{ editForm.get('salaireBase')?.value | number:'1.3-3' }}
-                  DT
+                  {{ editForm.get('salaireBase')?.value | number:'1.3-3' }} DT
                 </strong>
               </div>
               <div class="sr-row muted">
                 <span>Salaire brut annuel</span>
                 <span>
-                 {{ (editForm.get('salaireBase')?.value ?? 0) | number:'1.3-3' }}
-{{ ((editForm.get('salaireBase')?.value ?? 0) * 12) | number:'1.3-3' }} DT
+                  {{ ((editForm.get('salaireBase')?.value ?? 0) * 12) | number:'1.3-3' }} DT
                 </span>
               </div>
             </div>
@@ -637,13 +654,148 @@ const SVG = {
                 [innerHTML]="svg.save | safeHtml">
           </span>
           <span *ngIf="editLoading()" class="spin-sm"></span>
-          {{ editLoading()
-             ? 'Enregistrement...'
-             : 'Enregistrer les modifications' }}
+          {{ editLoading() ? 'Enregistrement...' : 'Enregistrer les modifications' }}
         </button>
       </div>
 
     </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         MODAL — CONFIRMER LA SUPPRESSION
+    ════════════════════════════════════════════════════════════════ -->
+
+    <!-- Overlay delete -->
+    <div class="modal-overlay"
+         *ngIf="deleteTarget()"
+         (click)="deleteTarget.set(null)">
+    </div>
+
+    <!-- Delete confirm modal -->
+    <div class="delete-modal" *ngIf="deleteTarget()">
+      <div class="dm-header">
+        <div class="dm-icon-wrap">
+          <span [innerHTML]="svg.trash | safeHtml"></span>
+        </div>
+        <div>
+          <h3>Supprimer le compte</h3>
+          <p>Cette action est irréversible</p>
+        </div>
+      </div>
+      <div class="dm-body">
+        Vous allez supprimer définitivement le compte de
+        <strong>{{ deleteTarget()?.prenom }} {{ deleteTarget()?.nom }}</strong>.
+        <br /><br />
+        Toutes les données associées (congés, historique, fiches de paie)
+        seront perdues.
+      </div>
+      <div class="dm-footer">
+        <button class="btn-outline" (click)="deleteTarget.set(null)">
+          Annuler
+        </button>
+        <button class="btn-delete" [disabled]="deleteLoading()"
+                (click)="confirmDelete()">
+          <span *ngIf="!deleteLoading()"
+                [innerHTML]="svg.trash | safeHtml">
+          </span>
+          <span *ngIf="deleteLoading()" class="spin-sm spin-red"></span>
+          {{ deleteLoading() ? 'Suppression...' : 'Supprimer définitivement' }}
+        </button>
+      </div>
+    </div>
+    <!-- ═══ MODAL SET PASSWORD ═══ -->
+<div class="modal-overlay"
+     *ngIf="pwdModalOpen()"
+     (click)="pwdModalOpen.set(false)">
+</div>
+<div class="edit-modal"
+     style="width:420px"
+     *ngIf="pwdModalOpen()">
+
+  <div class="modal-header">
+    <div class="mh-left">
+      <div class="modal-avatar"
+           [class]="'av-' + pwdUser()?.role?.toLowerCase()">
+        {{ pwdUser() ? init(pwdUser()) : '' }}
+      </div>
+      <div>
+        <h2>Définir un mot de passe</h2>
+        <p>{{ pwdUser()?.prenom }} {{ pwdUser()?.nom }}</p>
+      </div>
+    </div>
+    <button class="modal-close"
+            (click)="pwdModalOpen.set(false)"
+            [innerHTML]="svg.close | safeHtml">
+    </button>
+  </div>
+
+  <div class="modal-body">
+
+    <div class="alert alert-err"
+         style="margin-bottom:14px"
+         *ngIf="!pwdUser()?.email?.includes('@')">
+      <span [innerHTML]="svg.warn | safeHtml"></span>
+      Cet employé n'a pas d'email valide — le mot de passe
+      devra lui être communiqué manuellement.
+    </div>
+
+    <div class="form-group" style="margin-bottom:14px">
+      <label>Nouveau mot de passe <span class="req">*</span></label>
+      <input [type]="showPwd() ? 'text' : 'password'"
+             [(ngModel)]="newPassword"
+             placeholder="Minimum 6 caractères" />
+    </div>
+
+    <div class="form-group" style="margin-bottom:14px">
+      <label>Confirmer le mot de passe <span class="req">*</span></label>
+      <input [type]="showPwd() ? 'text' : 'password'"
+             [(ngModel)]="confirmPassword"
+             placeholder="Répéter le mot de passe" />
+    </div>
+
+    <!-- Toggle afficher/masquer -->
+    <label style="display:flex;align-items:center;gap:8px;
+                  font-size:12px;color:#64748b;cursor:pointer;
+                  margin-bottom:14px">
+      <input type="checkbox"
+             [checked]="showPwd()"
+             (change)="showPwd.set(!showPwd())" />
+      Afficher le mot de passe
+    </label>
+
+    <!-- Résumé visible si showPwd -->
+    <div *ngIf="showPwd() && newPassword"
+         style="background:#f0fdf4;border:1px solid #86efac;
+                border-radius:8px;padding:10px 14px;
+                font-size:13px;color:#166534;margin-bottom:14px">
+      Mot de passe : <strong>{{ newPassword }}</strong>
+      <br>
+      <small>Notez ce mot de passe pour le communiquer à l'employé.</small>
+    </div>
+
+    <div class="alert alert-err" *ngIf="pwdError()">
+      <span [innerHTML]="svg.warn | safeHtml"></span>
+      {{ pwdError() }}
+    </div>
+
+  </div>
+
+  <div class="modal-footer">
+    <button class="btn-outline"
+            (click)="pwdModalOpen.set(false)">
+      Annuler
+    </button>
+    <button class="btn-primary"
+            [disabled]="pwdLoading()"
+            (click)="onSetPassword()">
+      <span *ngIf="!pwdLoading()"
+            class="btn-icon"
+            [innerHTML]="svg.save | safeHtml">
+      </span>
+      <span *ngIf="pwdLoading()" class="spin-sm"></span>
+      {{ pwdLoading() ? 'Enregistrement...' : 'Définir le mot de passe' }}
+    </button>
+  </div>
+</div>
 
     <!-- ═══ TOAST ═══ -->
     <div class="g-toast"
@@ -767,9 +919,7 @@ const SVG = {
       border-radius: 8px; display: flex; align-items: center;
       justify-content: center; color: var(--primary);
     }
-    .cp-head h3 {
-      font-size: 15px; font-weight: 700;
-    }
+    .cp-head h3 { font-size: 15px; font-weight: 700; }
 
     .fg-grid {
       display: grid; grid-template-columns: repeat(4, 1fr);
@@ -809,12 +959,8 @@ const SVG = {
       border-color: var(--accent);
       box-shadow: 0 0 0 3px rgba(0,180,200,0.1);
     }
-    input.input-err, select.input-err {
-      border-color: var(--red);
-    }
-    .err-txt {
-      font-size: 11px; color: var(--red); font-weight: 500;
-    }
+    input.input-err, select.input-err { border-color: var(--red); }
+    .err-txt { font-size: 11px; color: var(--red); font-weight: 500; }
 
     .info-box {
       display: flex; align-items: flex-start; gap: 9px;
@@ -894,9 +1040,7 @@ const SVG = {
       padding: 1px 6px; border-radius: 10px;
       font-size: 10.5px; font-weight: 700;
     }
-    .rp-active .rp-count {
-      background: rgba(255,255,255,0.25);
-    }
+    .rp-active .rp-count { background: rgba(255,255,255,0.25); }
     .rp-btn:not(.rp-active) .rp-count {
       background: var(--border); color: var(--muted);
     }
@@ -936,9 +1080,7 @@ const SVG = {
     .av-employe { background: #16a34a; }
 
     .uc-info { display: flex; flex-direction: column; gap: 2px; }
-    .uc-name {
-      font-size: 13px; font-weight: 600;
-    }
+    .uc-name { font-size: 13px; font-weight: 600; }
     .uc-email { font-size: 11px; color: var(--muted); }
 
     .cin-badge {
@@ -956,22 +1098,10 @@ const SVG = {
       cursor: pointer; transition: all 0.2s;
       font-family: var(--font);
     }
-    .rs-admin   {
-      background: #ede9fe; color: #5b21b6;
-      border-color: #c4b5fd;
-    }
-    .rs-rh      {
-      background: var(--primary-lt); color: var(--primary);
-      border-color: #67e8f9;
-    }
-    .rs-manager {
-      background: var(--amber-lt); color: #92400e;
-      border-color: #fcd34d;
-    }
-    .rs-employe {
-      background: var(--green-lt); color: #166534;
-      border-color: #86efac;
-    }
+    .rs-admin   { background: #ede9fe; color: #5b21b6; border-color: #c4b5fd; }
+    .rs-rh      { background: var(--primary-lt); color: var(--primary); border-color: #67e8f9; }
+    .rs-manager { background: var(--amber-lt); color: #92400e; border-color: #fcd34d; }
+    .rs-employe { background: var(--green-lt); color: #166534; border-color: #86efac; }
 
     .status-row {
       display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
@@ -1025,6 +1155,13 @@ const SVG = {
       background: var(--primary-lt);
       border-color: var(--accent); color: var(--primary);
     }
+    .act-delete:hover {
+      background: #fef2f2; border-color: var(--red); color: var(--red);
+    }
+    .act-warning {
+  background: #f59e0b;
+  color: white;
+}
 
     .empty-state {
       display: flex; flex-direction: column; align-items: center;
@@ -1042,8 +1179,6 @@ const SVG = {
     /* ══════════════════════════════════════════════
        MODAL — MODIFIER LE PROFIL
     ══════════════════════════════════════════════ */
-
-    /* Overlay */
     .modal-overlay {
       position: fixed; inset: 0;
       background: rgba(15, 23, 42, 0.5);
@@ -1051,13 +1186,10 @@ const SVG = {
       z-index: 900;
       animation: fadeIn 0.25s ease;
     }
-
     @keyframes fadeIn {
       from { opacity: 0; }
       to   { opacity: 1; }
     }
-
-    /* Modal container */
     .edit-modal {
       position: fixed;
       top: 50%; left: 50%;
@@ -1071,31 +1203,19 @@ const SVG = {
       animation: modalIn 0.3s cubic-bezier(0.22, 1, 0.36, 1);
       overflow: hidden;
     }
-
     @keyframes modalIn {
-      from {
-        opacity: 0;
-        transform: translate(-50%, -48%) scale(0.96);
-      }
-      to {
-        opacity: 1;
-        transform: translate(-50%, -50%) scale(1);
-      }
+      from { opacity: 0; transform: translate(-50%, -48%) scale(0.96); }
+      to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
     }
-
-    /* Header modal */
     .modal-header {
       display: flex; align-items: center;
       justify-content: space-between;
       padding: 20px 24px 16px;
       border-bottom: 1px solid var(--border);
-      background: linear-gradient(
-        135deg, var(--primary-lt) 0%, white 70%);
+      background: linear-gradient(135deg, var(--primary-lt) 0%, white 70%);
       flex-shrink: 0;
     }
-    .mh-left {
-      display: flex; align-items: center; gap: 14px;
-    }
+    .mh-left { display: flex; align-items: center; gap: 14px; }
     .modal-avatar {
       width: 46px; height: 46px; border-radius: 50%;
       display: flex; align-items: center; justify-content: center;
@@ -1107,10 +1227,8 @@ const SVG = {
     }
     .modal-header p {
       font-size: 12px; color: var(--muted);
-      margin-top: 3px;
-      display: flex; align-items: center; gap: 8px;
+      margin-top: 3px; display: flex; align-items: center; gap: 8px;
     }
-
     .role-badge {
       font-size: 10px; font-weight: 700; padding: 2px 8px;
       border-radius: 10px; text-transform: uppercase;
@@ -1119,7 +1237,6 @@ const SVG = {
     .rb-rh      { background: var(--primary-lt); color: var(--primary); }
     .rb-manager { background: var(--amber-lt); color: #92400e; }
     .rb-employe { background: var(--green-lt); color: #166534; }
-
     .modal-close {
       width: 32px; height: 32px; border: 1.5px solid var(--border);
       background: white; border-radius: 8px; cursor: pointer;
@@ -1129,8 +1246,6 @@ const SVG = {
     .modal-close:hover {
       background: #fef2f2; border-color: var(--red); color: var(--red);
     }
-
-    /* Body scrollable */
     .modal-body {
       flex: 1; overflow-y: auto; padding: 20px 24px;
     }
@@ -1139,8 +1254,6 @@ const SVG = {
     .modal-body::-webkit-scrollbar-thumb {
       background: var(--border); border-radius: 10px;
     }
-
-    /* Tabs dans le modal */
     .modal-tabs {
       display: flex; gap: 4px; margin-bottom: 20px;
       background: var(--bg); border-radius: 10px; padding: 4px;
@@ -1158,17 +1271,11 @@ const SVG = {
       background: white; color: var(--primary);
       box-shadow: 0 2px 8px rgba(11,110,126,0.1);
     }
-
-    /* Tab content */
-    .tab-content {
-      animation: tabIn 0.2s ease;
-    }
+    .tab-content { animation: tabIn 0.2s ease; }
     @keyframes tabIn {
       from { opacity: 0; transform: translateY(4px); }
       to   { opacity: 1; transform: translateY(0); }
     }
-
-    /* Section label dans modal */
     .section-label {
       display: flex; align-items: center; gap: 7px;
       font-size: 11px; font-weight: 700; color: var(--muted);
@@ -1176,57 +1283,98 @@ const SVG = {
       margin-bottom: 12px; padding-bottom: 8px;
       border-bottom: 1px solid var(--border);
     }
-
-    /* Grid 2 colonnes dans modal */
     .modal-grid {
       display: grid; grid-template-columns: 1fr 1fr; gap: 14px;
     }
     @media (max-width: 600px) {
       .modal-grid { grid-template-columns: 1fr; }
     }
-
-    /* Input avec unité (salaire) */
     .input-with-unit {
       position: relative;
-      .input-unit {
-        position: absolute; right: 10px; top: 50%;
-        transform: translateY(-50%);
-        font-size: 12px; font-weight: 600; color: var(--muted);
-        pointer-events: none;
-      }
-      input { padding-right: 36px; }
     }
-
-    /* Ancienneté */
+    .input-unit {
+      position: absolute; right: 10px; top: 50%;
+      transform: translateY(-50%);
+      font-size: 12px; font-weight: 600; color: var(--muted);
+      pointer-events: none;
+    }
+    .input-with-unit input { padding-right: 36px; }
     .anciennete-display {
       display: flex; align-items: center; gap: 8px;
       padding: 9px 12px; background: var(--bg);
       border: 1.5px solid var(--border); border-radius: var(--r);
       font-size: 13px; color: var(--primary); font-weight: 600;
     }
-
-    /* Récap salaire */
     .salary-recap {
       margin-top: 14px; background: var(--primary-lt);
       border-radius: 10px; padding: 14px 16px;
       display: flex; flex-direction: column; gap: 8px;
     }
     .sr-row {
-      display: flex; justify-content: space-between;
-      font-size: 13px;
-      strong { color: var(--primary); font-size: 15px; }
+      display: flex; justify-content: space-between; font-size: 13px;
     }
-    .sr-row.muted {
-      font-size: 12px; color: var(--muted);
-    }
-
-    /* Footer modal */
+    .sr-row strong { color: var(--primary); font-size: 15px; }
+    .sr-row.muted { font-size: 12px; color: var(--muted); }
     .modal-footer {
       display: flex; gap: 10px; justify-content: flex-end;
       padding: 16px 24px;
       border-top: 1px solid var(--border);
       background: #fafafa; flex-shrink: 0;
     }
+
+    /* ══════════════════════════════════════════════
+       MODAL — SUPPRIMER
+    ══════════════════════════════════════════════ */
+    .delete-modal {
+      position: fixed;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      width: 420px; max-width: calc(100vw - 32px);
+      background: white; border-radius: 16px;
+      box-shadow: 0 25px 60px rgba(15, 23, 42, 0.25);
+      z-index: 1000;
+      overflow: hidden;
+      animation: modalIn 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    .dm-header {
+      display: flex; align-items: center; gap: 14px;
+      padding: 20px 20px 16px;
+      background: var(--red-lt);
+      border-bottom: 1px solid #fecaca;
+    }
+    .dm-icon-wrap {
+      width: 42px; height: 42px; background: #fee2e2;
+      border-radius: 50%; display: flex; align-items: center;
+      justify-content: center; color: var(--red); flex-shrink: 0;
+    }
+    .dm-header h3 {
+      font-size: 15px; font-weight: 700; color: #991b1b;
+    }
+    .dm-header p {
+      font-size: 12px; color: #b91c1c; margin-top: 3px;
+    }
+    .dm-body {
+      padding: 20px 20px 16px;
+      font-size: 13px; color: var(--muted); line-height: 1.65;
+    }
+    .dm-body strong { color: var(--text); font-weight: 600; }
+    .dm-footer {
+      display: flex; gap: 10px; justify-content: flex-end;
+      padding: 14px 20px;
+      border-top: 1px solid var(--border);
+      background: #fafafa;
+    }
+    .btn-delete {
+      display: inline-flex; align-items: center; gap: 7px;
+      background: var(--red); color: white; border: none;
+      border-radius: var(--r); padding: 10px 16px;
+      font-size: 13px; font-weight: 600; font-family: var(--font);
+      cursor: pointer; transition: all 0.2s;
+    }
+    .btn-delete:hover:not(:disabled) {
+      background: #dc2626; transform: translateY(-1px);
+    }
+    .btn-delete:disabled { opacity: 0.55; cursor: not-allowed; }
 
     /* ══ TOAST ══ */
     .g-toast {
@@ -1240,18 +1388,9 @@ const SVG = {
       box-shadow: 0 8px 24px rgba(0,0,0,0.12);
     }
     .toast-show    { transform: translateY(0); opacity: 1; }
-    .toast-success {
-      background: var(--green-lt); color: #166534;
-      border: 1px solid #86efac;
-    }
-    .toast-error   {
-      background: var(--red-lt); color: #991b1b;
-      border: 1px solid #fca5a5;
-    }
-    .toast-info    {
-      background: var(--primary-lt); color: var(--primary);
-      border: 1px solid #67e8f9;
-    }
+    .toast-success { background: var(--green-lt); color: #166534; border: 1px solid #86efac; }
+    .toast-error   { background: var(--red-lt); color: #991b1b; border: 1px solid #fca5a5; }
+    .toast-info    { background: var(--primary-lt); color: var(--primary); border: 1px solid #67e8f9; }
 
     /* ══ SPINNERS ══ */
     .spin-sm {
@@ -1259,6 +1398,10 @@ const SVG = {
       border: 2px solid rgba(255,255,255,0.35);
       border-top-color: white;
       animation: spin 0.7s linear infinite; display: block;
+    }
+    .spin-red {
+      border-color: rgba(239,68,68,0.25);
+      border-top-color: var(--red);
     }
     @keyframes spin { to { transform: rotate(360deg); } }
   `]
@@ -1283,7 +1426,7 @@ export class AdminUsersComponent implements OnInit {
   roleF      = signal('');
   searchFocused = false;
 
-  // ─── Modal état ──────────────────────────────────────────────────
+  // ─── Modal édition ───────────────────────────────────────────────
   modalOpen    = signal(false);
   editingUser  = signal<any>(null);
   editLoading  = signal(false);
@@ -1291,7 +1434,11 @@ export class AdminUsersComponent implements OnInit {
   editOk       = signal('');
   editTab      = signal<'perso' | 'pro'>('perso');
 
-  toast = signal<{show:boolean; message:string; type:string}>(
+  // ─── Modal suppression ───────────────────────────────────────────
+  deleteTarget  = signal<any>(null);
+  deleteLoading = signal(false);
+
+  toast = signal<{ show: boolean; message: string; type: string }>(
     { show: false, message: '', type: 'success' }
   );
 
@@ -1304,33 +1451,34 @@ export class AdminUsersComponent implements OnInit {
 
   // ─── Formulaire création ─────────────────────────────────────────
   form = this.fb.group({
-    nom:          ['', Validators.required],
-    prenom:       ['', Validators.required],
-    cin:          ['', Validators.required],
-    email:        ['', [Validators.required, Validators.email]],
-    role:         ['', Validators.required],
-    departement:  [''],
-    dateEmbauche: [''],
-    managerId:    [null as number | null]
+    nom:           ['', Validators.required],
+    prenom:        ['', Validators.required],
+    cin:           ['', Validators.required],
+    email: ['', [Validators.email]],
+    role:          ['', Validators.required],
+    departement:   [''],
+    dateEmbauche:  [''],
+    managerId:     [null as number | null],
+    societe:       [''],
+    societeCustom: ['']   // ← champ pour saisie manuelle quand "Autre"
   });
 
   // ─── Formulaire édition ──────────────────────────────────────────
   editForm = this.fb.group({
-    // Infos personnelles
     nom:           ['', Validators.required],
     prenom:        ['', Validators.required],
     cin:           ['', Validators.required],
-    email:         ['', [Validators.required, Validators.email]],
+    email: ['', [Validators.email]],
     telephone:     [''],
     adresse:       [''],
     dateNaissance: [''],
-    // Infos professionnelles
     poste:         [''],
     departement:   [''],
     dateEmbauche:  [''],
     typeContrat:   [''],
     managerId:     [null as number | null],
-    salaireBase:   [null as number | null]
+    salaireBase:   [null as number | null],
+    societe:       ['']
   });
 
   ngOnInit(): void {
@@ -1350,7 +1498,7 @@ export class AdminUsersComponent implements OnInit {
   }
 
   // ═══════════════════════════════════════════════════════════════
-  // MODAL — Ouvrir, Fermer, Sauvegarder
+  // MODAL ÉDITION
   // ═══════════════════════════════════════════════════════════════
 
   openModal(u: any): void {
@@ -1359,13 +1507,11 @@ export class AdminUsersComponent implements OnInit {
     this.editOk.set('');
     this.editTab.set('perso');
 
-    // Cherche les infos dans employes
     const emp = this.employes().find(
       e => e.userId === u.id || e.id === u.id
     );
 
     this.editForm.patchValue({
-      // Personnelles
       nom:           u.nom           ?? '',
       prenom:        u.prenom        ?? '',
       cin:           emp?.cin        ?? '',
@@ -1374,14 +1520,14 @@ export class AdminUsersComponent implements OnInit {
       adresse:       emp?.adresse    ?? u.adresse    ?? '',
       dateNaissance: emp?.dateNaissance
         ? emp.dateNaissance.substring(0, 10) : '',
-      // Professionnelles
       poste:         emp?.poste        ?? u.poste        ?? '',
       departement:   emp?.departement  ?? u.departement  ?? '',
       dateEmbauche:  emp?.dateEmbauche
         ? emp.dateEmbauche.substring(0, 10) : '',
       typeContrat:   emp?.typeContrat  ?? '',
       managerId:     emp?.managerId    ?? u.managerId    ?? null,
-      salaireBase:   emp?.salaireBase  ?? u.salaireBase  ?? null
+      salaireBase:   emp?.salaireBase  ?? u.salaireBase  ?? null,
+      societe:       emp?.societe      ?? ''
     });
 
     this.modalOpen.set(true);
@@ -1401,7 +1547,6 @@ export class AdminUsersComponent implements OnInit {
   onSaveEdit(): void {
     if (this.editForm.invalid) {
       this.editForm.markAllAsTouched();
-      // Aller sur l'onglet avec l'erreur
       const hasPersoErr =
         this.editForm.get('nom')?.invalid    ||
         this.editForm.get('prenom')?.invalid ||
@@ -1419,50 +1564,66 @@ export class AdminUsersComponent implements OnInit {
 
     const payload = {
       ...this.editForm.value,
-      managerId: this.editForm.value.managerId
+      managerId:   this.editForm.value.managerId
         ? Number(this.editForm.value.managerId) : null,
       salaireBase: this.editForm.value.salaireBase
         ? Number(this.editForm.value.salaireBase) : null
     };
 
-    this.http.put(
-      `${this.API}/admin/users/${u.id}`, payload
-    ).subscribe({
-      next: () => {
-        this.editLoading.set(false);
-        this.editOk.set('Profil mis à jour avec succès !');
+    this.http.put(`${this.API}/admin/users/${u.id}`, payload)
+      .subscribe({
+        next: () => {
+          this.editLoading.set(false);
+          this.editOk.set('Profil mis à jour avec succès !');
+          this.users.update(list =>
+            list.map(x => x.id === u.id
+              ? { ...x, nom: payload.nom, prenom: payload.prenom, email: payload.email }
+              : x)
+          );
+          this.employes.update(list =>
+            list.map(e =>
+              (e.userId === u.id || e.id === u.id)
+                ? { ...e, ...payload } : e)
+          );
+          this.showToast('Profil mis à jour avec succès', 'success');
+          setTimeout(() => this.closeModal(), 1200);
+        },
+        error: (err) => {
+          this.editLoading.set(false);
+          this.editErr.set(err.error?.message ?? 'Erreur lors de la mise à jour.');
+        }
+      });
+  }
 
-        // Mise à jour locale
-        this.users.update(list =>
-          list.map(x => x.id === u.id
-            ? {
-                ...x,
-                nom:    payload.nom,
-                prenom: payload.prenom,
-                email:  payload.email
-              }
-            : x
-          )
-        );
+  // ═══════════════════════════════════════════════════════════════
+  // MODAL SUPPRESSION
+  // ═══════════════════════════════════════════════════════════════
 
-        this.employes.update(list =>
-          list.map(e =>
-            (e.userId === u.id || e.id === u.id)
-              ? { ...e, ...payload }
-              : e
-          )
-        );
+  confirmDelete(): void {
+    const u = this.deleteTarget();
+    if (!u) return;
 
-        this.showToast(
-          'Profil mis à jour avec succès', 'success');
-        setTimeout(() => this.closeModal(), 1200);
-      },
-      error: (err) => {
-        this.editLoading.set(false);
-        this.editErr.set(
-          err.error?.message ?? 'Erreur lors de la mise à jour.');
-      }
-    });
+    this.deleteLoading.set(true);
+
+    this.http.delete(`${this.API}/admin/users/${u.id}`)
+      .subscribe({
+        next: () => {
+          this.deleteLoading.set(false);
+          this.users.update(list => list.filter(x => x.id !== u.id));
+          this.employes.update(list =>
+            list.filter(e => e.userId !== u.id && e.id !== u.id)
+          );
+          this.deleteTarget.set(null);
+          this.showToast(
+            `Compte de ${u.prenom} ${u.nom} supprimé`, 'success');
+        },
+        error: (err) => {
+          this.deleteLoading.set(false);
+          this.deleteTarget.set(null);
+          this.showToast(
+            err.error?.message ?? 'Erreur lors de la suppression', 'error');
+        }
+      });
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -1476,18 +1637,27 @@ export class AdminUsersComponent implements OnInit {
     this.loading.set(true);
     this.createErr.set('');
 
+    // Résoudre la société finale : si "Autre", utiliser le champ texte
+    let societe = this.form.value.societe ?? '';
+    if (societe === '__autre__') {
+      societe = this.form.value.societeCustom ?? '';
+    }
+
     const payload = {
       ...this.form.value,
+      societe,   // ← remplace la valeur "__autre__" le cas échéant
       managerId: this.form.value.managerId
         ? Number(this.form.value.managerId) : null
     };
+
+    // Supprimer societeCustom du payload (champ interne uniquement)
+    delete (payload as any).societeCustom;
 
     this.http.post(`${this.API}/admin/users`, payload)
       .subscribe({
         next: () => {
           this.loading.set(false);
-          this.createOk.set(
-            'Compte créé ! Email de bienvenue envoyé.');
+          this.createOk.set('Compte créé ! Email de bienvenue envoyé.');
           this.form.reset({ managerId: null });
           this.reload();
           setTimeout(() => {
@@ -1497,8 +1667,7 @@ export class AdminUsersComponent implements OnInit {
         },
         error: (err) => {
           this.loading.set(false);
-          this.createErr.set(
-            err.error?.message ?? 'Erreur lors de la création.');
+          this.createErr.set(err.error?.message ?? 'Erreur lors de la création.');
         }
       });
   }
@@ -1534,8 +1703,7 @@ export class AdminUsersComponent implements OnInit {
           list.map(x => x.id === u.id
             ? { ...x, enabled: !x.enabled } : x));
         this.showToast(
-          u.enabled ? 'Compte désactivé' : 'Compte activé',
-          'info');
+          u.enabled ? 'Compte désactivé' : 'Compte activé', 'info');
       },
       error: () => this.showToast('Erreur', 'error')
     });
@@ -1548,8 +1716,7 @@ export class AdminUsersComponent implements OnInit {
       next: () => {
         this.users.update(u =>
           u.map(x => x.id === userId
-            ? { ...x, accountNonLocked: true,
-                failedAttempts: 0 } : x));
+            ? { ...x, accountNonLocked: true, failedAttempts: 0 } : x));
         this.showToast('Compte déverrouillé !', 'success');
       },
       error: () => this.showToast('Erreur', 'error')
@@ -1561,9 +1728,7 @@ export class AdminUsersComponent implements OnInit {
     this.http.put(
       `${this.API}/admin/users/${userId}/reset-password`, {}
     ).subscribe({
-      next: () =>
-        this.showToast(
-          'MDP réinitialisé — email envoyé', 'success'),
+      next: () => this.showToast('MDP réinitialisé — email envoyé', 'success'),
       error: () => this.showToast('Erreur', 'error')
     });
   }
@@ -1599,6 +1764,15 @@ export class AdminUsersComponent implements OnInit {
     return r === 'EMPLOYE' || r === 'MANAGER';
   }
 
+  /** Retourne la liste dédupliquée et triée des sociétés existantes */
+  getSocietesDisponibles(): string[] {
+    return [...new Set(
+      this.employes()
+        .map((e: any) => e.societe)
+        .filter(Boolean)
+    )].sort() as string[];
+  }
+
   filtered(): any[] {
     const term = this.search().trim().toLowerCase();
     const role = this.roleF();
@@ -1610,8 +1784,7 @@ export class AdminUsersComponent implements OnInit {
         (u.prenom ?? '').toLowerCase().includes(term) ||
         (u.email  ?? '').toLowerCase().includes(term);
       if (basic) return true;
-      return (this.getCin(u.id) ?? '')
-        .toLowerCase().includes(term);
+      return (this.getCin(u.id) ?? '').toLowerCase().includes(term);
     });
   }
 
@@ -1637,8 +1810,7 @@ export class AdminUsersComponent implements OnInit {
   }
 
   init(u: any): string {
-    return ((u.prenom?.[0] ?? '') +
-            (u.nom?.[0]   ?? '')).toUpperCase();
+    return ((u.prenom?.[0] ?? '') + (u.nom?.[0] ?? '')).toUpperCase();
   }
 
   trackById(_: number, u: any): number {
@@ -1653,10 +1825,65 @@ export class AdminUsersComponent implements OnInit {
   showToast(message: string, type: string): void {
     this.toast.set({ show: true, message, type });
     setTimeout(() =>
-      this.toast.set({
-        show: false, message: '', type: 'success'
-      }),
+      this.toast.set({ show: false, message: '', type: 'success' }),
       3000
     );
+  }
+
+  // ─── Modal Set Password ───────────────────────────────────────
+  pwdModalOpen    = signal(false);
+  pwdUser         = signal<any>(null);
+  pwdLoading      = signal(false);
+  pwdError        = signal('');
+  showPwd         = signal(false);
+  newPassword     = '';
+  confirmPassword = '';
+
+  openSetPassword(u: any): void {
+    this.pwdUser.set(u);
+    this.newPassword     = '';
+    this.confirmPassword = '';
+    this.pwdError.set('');
+    this.showPwd.set(false);
+    this.pwdModalOpen.set(true);
+  }
+
+  onSetPassword(): void {
+    this.pwdError.set('');
+
+    if (!this.newPassword || this.newPassword.length < 6) {
+      this.pwdError.set(
+        'Le mot de passe doit contenir au moins 6 caractères.');
+      return;
+    }
+
+    if (this.newPassword !== this.confirmPassword) {
+      this.pwdError.set('Les deux mots de passe ne correspondent pas.');
+      return;
+    }
+
+    const u = this.pwdUser();
+    if (!u) return;
+
+    this.pwdLoading.set(true);
+
+    this.http.put(
+      `${this.API}/admin/users/${u.id}/set-password`,
+      { password: this.newPassword }
+    ).subscribe({
+      next: () => {
+        this.pwdLoading.set(false);
+        this.pwdModalOpen.set(false);
+        this.showToast(
+          'Mot de passe défini — l\'employé devra le changer au prochain login',
+          'success'
+        );
+      },
+      error: (err) => {
+        this.pwdLoading.set(false);
+        this.pwdError.set(
+          err.error?.message ?? 'Erreur lors de la définition du mot de passe.');
+      }
+    });
   }
 }

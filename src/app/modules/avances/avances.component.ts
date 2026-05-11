@@ -93,7 +93,7 @@ const IC = {
         <span [innerHTML]="ic.plus | safeHtml"></span>
         Nouvelle demande
       </button>
-      <button class="tab" *ngIf="isManagerOrAbove()" [class.active]="activeTab() === 'en-attente'" (click)="setTab('en-attente')">
+      <button class="tab" *ngIf="isRHOrAdmin()" [class.active]="activeTab() === 'en-attente'" (click)="setTab('en-attente')">
         <span [innerHTML]="ic.clock | safeHtml"></span>
         En attente
         <span class="tab-count warning" *ngIf="enAttente().length > 0">{{ enAttente().length }}</span>
@@ -172,13 +172,8 @@ const IC = {
 
         <!-- Workflow -->
         <div class="workflow-row">
-          <div class="wf-item" [class.done]="isWFDone(a,'soumis')" [class.active]="a.statut === 'EN_ATTENTE_MANAGER'">
+          <div class="wf-item" [class.done]="isWFDone(a,'soumis')" [class.active]="a.statut === 'EN_ATTENTE_RH'">
             <div class="wf-dot"></div><span>Soumis</span>
-          </div>
-          <div class="wf-line" [class.done]="isWFDone(a,'manager')"></div>
-          <div class="wf-item" [class.done]="isWFDone(a,'manager')" [class.active]="a.statut === 'EN_ATTENTE_RH'" [class.favorable]="a.avisManager === true" [class.defavorable]="a.avisManager === false">
-            <div class="wf-dot"></div>
-            <span>Manager <span *ngIf="a.avisManager === true" class="wf-icon green" [innerHTML]="ic.check | safeHtml"></span><span *ngIf="a.avisManager === false" class="wf-icon amber" [innerHTML]="ic.alertCircle | safeHtml"></span></span>
           </div>
           <div class="wf-line" [class.done]="isWFDone(a,'rh')"></div>
           <div class="wf-item" [class.done]="isWFDone(a,'rh')" [class.rejected]="a.statut === 'REJETEE'">
@@ -191,18 +186,7 @@ const IC = {
         </div>
 
         <!-- Commentaires -->
-        <div class="ac-comments" *ngIf="a.commentaireManager || a.commentaireRH">
-          <div class="ac-comment" *ngIf="a.commentaireManager">
-            <span class="cc-icon"><span [innerHTML]="ic.user | safeHtml"></span></span>
-            <div class="cc-body">
-              <span class="cc-label">{{ a.managerNom }} :</span>
-              {{ a.commentaireManager }}
-              <span class="cc-avis" *ngIf="a.avisManager !== null" [class.favorable]="a.avisManager" [class.defavorable]="!a.avisManager">
-                <span [innerHTML]="(a.avisManager ? ic.thumbUp : ic.thumbDown) | safeHtml"></span>
-                Avis {{ a.avisManager ? 'Favorable' : 'Défavorable' }}
-              </span>
-            </div>
-          </div>
+        <div class="ac-comments" *ngIf="a.commentaireRH">
           <div class="ac-comment" *ngIf="a.commentaireRH">
             <span class="cc-icon"><span [innerHTML]="ic.building | safeHtml"></span></span>
             <div class="cc-body">
@@ -317,7 +301,7 @@ const IC = {
           <div class="sim-kpi">
             <span class="sk-label">Montant max autorisé</span>
             <span class="sk-value teal">{{ simulation()!.montantMaxAutorise | number:'1.3-3' }} DT</span>
-            <span class="sk-sub">50% de {{ simulation()!.salaireBase | number:'1.3-3' }} DT</span>
+            <span class="sk-sub">3 × {{ simulation()!.salaireBase | number:'1.3-3' }} DT (salaire de base)</span>
           </div>
           <div class="sim-kpi">
             <span class="sk-label">Mensualité</span>
@@ -469,31 +453,6 @@ const IC = {
         <div class="ac-motif">
           <span class="ac-motif-icon"><span [innerHTML]="ic.msgCircle | safeHtml"></span></span>
           {{ a.motif }}
-        </div>
-
-        <div class="avis-manager-info" *ngIf="isRHOrAdmin() && a.avisManager !== null">
-          <span class="ami-label">Avis Manager :</span>
-          <span class="ami-val" [class.favorable]="a.avisManager" [class.defavorable]="!a.avisManager">
-            <span [innerHTML]="(a.avisManager ? ic.thumbUp : ic.thumbDown) | safeHtml"></span>
-            {{ a.avisManager ? 'Favorable' : 'Défavorable' }}
-          </span>
-          <span *ngIf="a.commentaireManager">"{{ a.commentaireManager }}"</span>
-        </div>
-
-        <!-- Form Manager -->
-        <div class="validation-form" *ngIf="!isRHOrAdmin() && validatingId() === a.id">
-          <div class="vf-header"><strong>Donner votre avis :</strong></div>
-          <textarea [(ngModel)]="validationCommentaire" placeholder="Commentaire (optionnel)..." rows="2"></textarea>
-          <div class="vf-actions">
-            <button class="btn btn-danger" (click)="donnerAvis(a.id, false)" [disabled]="validationLoading()">
-              <span [innerHTML]="ic.thumbDown | safeHtml"></span> Avis Défavorable
-            </button>
-            <button class="btn btn-primary" (click)="donnerAvis(a.id, true)" [disabled]="validationLoading()">
-              <span *ngIf="!validationLoading()"><span [innerHTML]="ic.thumbUp | safeHtml"></span> Avis Favorable</span>
-              <span *ngIf="validationLoading()" class="spinner"></span>
-            </button>
-            <button class="btn btn-outline" (click)="validatingId.set(null)">Annuler</button>
-          </div>
         </div>
 
         <!-- Form RH -->
@@ -988,7 +947,6 @@ export class AvancesComponent implements OnInit {
   get minDate(): string { return new Date().toISOString().split('T')[0]; }
 
   statuts = [
-    { value: 'EN_ATTENTE_MANAGER', label: 'Attente Manager' },
     { value: 'EN_ATTENTE_RH',      label: 'Attente RH' },
     { value: 'VALIDEE',            label: 'Validée' },
     { value: 'EN_COURS',           label: 'En cours' },
@@ -1012,7 +970,7 @@ export class AvancesComponent implements OnInit {
 
   private loadData(): void {
     const obs: any = { avances: this.avanceService.getMesAvances() };
-    if (this.isManagerOrAbove()) { obs.attente = this.isRHOrAdmin() ? this.avanceService.getEnAttenteRH() : this.avanceService.getEnAttenteManager(); }
+    if (this.isManagerOrAbove()) { obs.attente = this.avanceService.getEnAttenteRH(); }
     if (this.isRHOrAdmin()) { obs.toutes = this.avanceService.getToutesAvances(); obs.stats = this.avanceService.getStatistiques(); }
     forkJoin(obs).subscribe({
       next: (data: any) => { this.mesAvances.set(data.avances ?? []); if (data.attente) this.enAttente.set(data.attente); if (data.toutes) this.toutesAvances.set(data.toutes); if (data.stats) this.statsRH.set(data.stats); this.loading.set(false); },
@@ -1056,14 +1014,6 @@ export class AvancesComponent implements OnInit {
   }
 
   initValidationForm(a: AvanceSalaire): void { this.validationCommentaire = ''; this.rhMontantAccorde = a.montantDemande; this.rhMensualites = a.nombreMensualites; this.rhDateVersement = ''; }
-
-  donnerAvis(id: number, favorable: boolean): void {
-    this.validationLoading.set(true);
-    this.avanceService.donnerAvis(id, { favorable, commentaire: this.validationCommentaire }).subscribe({
-      next: () => { this.validationLoading.set(false); this.validatingId.set(null); this.enAttente.update(a => a.filter(x => x.id !== id)); this.showToast(favorable ? 'Avis favorable envoyé !' : 'Avis défavorable envoyé', favorable ? 'success' : 'info'); },
-      error: (err) => { this.validationLoading.set(false); this.showToast(err.error?.message ?? 'Erreur', 'error'); }
-    });
-  }
 
   traiterRH(id: number, approuve: boolean): void {
     this.validationLoading.set(true);
@@ -1125,32 +1075,32 @@ export class AvancesComponent implements OnInit {
   isRHOrAdmin(): boolean      { return ['RH','ADMIN'].includes(this.role); }
   isInvalid(field: string): boolean    { const c = this.avanceForm.get(field); return !!(c?.invalid && c?.touched); }
   isSimInvalid(field: string): boolean { const c = this.simForm.get(field);    return !!(c?.invalid && c?.touched); }
-  canAnnuler(a: AvanceSalaire): boolean { return ['EN_ATTENTE_MANAGER','EN_ATTENTE_RH'].includes(a.statut); }
+  canAnnuler(a: AvanceSalaire): boolean { return a.statut === 'EN_ATTENTE_RH'; }
   getInitiales(a: AvanceSalaire): string { return ((a.employePrenom?.[0] ?? '') + (a.employeNom?.[0] ?? '')).toUpperCase(); }
 
   getSubtitle(): string {
-    const map: Record<string,string> = { EMPLOYE: 'Simulez et demandez une avance sur salaire', MANAGER: 'Donnez votre avis sur les demandes de votre équipe', RH: 'Gérez et validez les demandes d\'avance', ADMIN: 'Administration des avances sur salaire' };
+    const map: Record<string,string> = { EMPLOYE: 'Simulez et demandez une avance sur salaire', RH: 'Gérez et validez les demandes d\'avance', ADMIN: 'Administration des avances sur salaire' };
     return map[this.role] ?? '';
   }
 
   getBadgeClass(statut: string): string {
-    const map: Record<string,string> = { EN_ATTENTE_MANAGER: 'badge badge-warning', EN_ATTENTE_RH: 'badge badge-warning', VALIDEE: 'badge badge-success', EN_COURS: 'badge badge-info', SOLDEE: 'badge badge-success', REJETEE: 'badge badge-danger', ANNULEE: 'badge badge-gray' };
+    const map: Record<string,string> = { EN_ATTENTE_RH: 'badge badge-warning', VALIDEE: 'badge badge-success', EN_COURS: 'badge badge-info', SOLDEE: 'badge badge-success', REJETEE: 'badge badge-danger', ANNULEE: 'badge badge-gray' };
     return map[statut] ?? 'badge badge-gray';
   }
 
   getStatutLabel(statut: string): string {
-    const map: Record<string,string> = { EN_ATTENTE_MANAGER: 'Attente Manager', EN_ATTENTE_RH: 'Attente RH', VALIDEE: 'Validée', EN_COURS: 'En cours', SOLDEE: 'Soldée', REJETEE: 'Rejetée', ANNULEE: 'Annulée' };
+    const map: Record<string,string> = { EN_ATTENTE_RH: 'Attente RH', VALIDEE: 'Validée', EN_COURS: 'En cours', SOLDEE: 'Soldée', REJETEE: 'Rejetée', ANNULEE: 'Annulée' };
     return map[statut] ?? statut;
   }
 
   getStatutClass(statut: string): string {
-    const map: Record<string,string> = { VALIDEE: 'statut-validee', EN_COURS: 'statut-en-cours', SOLDEE: 'statut-soldee', REJETEE: 'statut-rejetee', ANNULEE: 'statut-annulee', EN_ATTENTE_MANAGER: 'statut-attente-manager', EN_ATTENTE_RH: 'statut-attente-rh' };
+    const map: Record<string,string> = { VALIDEE: 'statut-validee', EN_COURS: 'statut-en-cours', SOLDEE: 'statut-soldee', REJETEE: 'statut-rejetee', ANNULEE: 'statut-annulee', EN_ATTENTE_RH: 'statut-attente-rh' };
     return map[statut] ?? '';
   }
 
   isWFDone(a: AvanceSalaire, step: string): boolean {
-    const order: Record<string, number> = { soumis: 1, manager: 2, rh: 3, verse: 4 };
-    const statutLevel: Record<string, number> = { EN_ATTENTE_MANAGER: 1, EN_ATTENTE_RH: 2, VALIDEE: 3, REJETEE: 3, EN_COURS: 4, SOLDEE: 4, ANNULEE: 0 };
+    const order: Record<string, number> = { soumis: 1, rh: 2, verse: 3 };
+    const statutLevel: Record<string, number> = { EN_ATTENTE_RH: 1, VALIDEE: 2, REJETEE: 2, EN_COURS: 3, SOLDEE: 3, ANNULEE: 0 };
     return (statutLevel[a.statut] ?? 0) > (order[step] ?? 0);
   }
 

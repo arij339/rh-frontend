@@ -957,7 +957,7 @@ export class ReclamationsComponent implements OnInit {
 
   isRHOrAdmin(): boolean { return ['RH','ADMIN'].includes(this.role); }
   isInvalid(f: string): boolean { const c = this.reclamForm.get(f); return !!(c?.invalid && c?.touched); }
-  getSubtitle(): string { const m: Record<string,string> = { EMPLOYE: 'Soumettez et suivez vos réclamations', MANAGER: 'Consultez les réclamations', RH: 'Gérez et traitez les réclamations', ADMIN: 'Administration des réclamations' }; return m[this.role] ?? ''; }
+  getSubtitle(): string { const m: Record<string,string> = { EMPLOYE: 'Soumettez et suivez vos réclamations', RH: 'Gérez et traitez les réclamations', ADMIN: 'Administration des réclamations' }; return m[this.role] ?? ''; }
   getFilteredMes(): Reclamation[] { return this.mesReclamations().filter(r => (!this.filterStatut() || r.statut === this.filterStatut()) && (!this.filterType() || r.typeReclamation === this.filterType())); }
   getRHFiltered(): Reclamation[] { return this.toutesRH().filter(r => { const term = this.rhSearch().toLowerCase(); const m = !term || r.objet?.toLowerCase().includes(term) || r.employeNom?.toLowerCase().includes(term) || r.numeroTicket?.toLowerCase().includes(term); return m && (!this.rhFilterStatut() || r.statut === this.rhFilterStatut()) && (!this.rhFilterUrgence() || r.niveauUrgence === this.rhFilterUrgence()); }); }
   getCommentairesPublics() { return (this.detailReclamation()?.commentaires ?? []).filter(c => !c.interne); }

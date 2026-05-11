@@ -1,5 +1,4 @@
 export type StatutAvance =
-  | 'EN_ATTENTE_MANAGER'
   | 'EN_ATTENTE_RH'
   | 'VALIDEE'
   | 'REJETEE'
@@ -36,15 +35,11 @@ export interface AvanceSalaire {
   dateDebutRemboursement: string | null;
   prochaineEcheance:      string | null;
   statut:                 StatutAvance;
-  managerNom:             string | null;
-  avisManager:            boolean | null;
-  commentaireManager:     string | null;
-  dateAvisManager:        string | null;
   rhDecideurNom:          string | null;
   commentaireRH:          string | null;
   dateDecisionRH:         string | null;
   dateVersement:          string | null;
-  echeancier:             Echeance[] | null;  // ✅ null autorisé
+  echeancier:             Echeance[] | null;
   createdAt:              string;
 }
 
@@ -75,11 +70,6 @@ export interface SimulationResponse {
   eligible:               boolean;
   raisonIneligibilite:    string | null;
   echeancier:             SimEcheance[];
-}
-
-export interface AvisManagerRequest {
-  favorable:   boolean;
-  commentaire: string;
 }
 
 export interface TraiterAvanceRequest {

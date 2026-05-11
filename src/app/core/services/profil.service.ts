@@ -13,9 +13,8 @@ export class ProfilService {
 
   // Mon profil
   getMonProfil(): Observable<ProfilEmploye> {
-    return this.http.get<ProfilEmploye>(
-      `${this.API}/employe/profil`);
-  }
+  return this.http.get<ProfilEmploye>(`${this.API}/employe/profil/complet`); // ← /complet
+}
 
   updateMonProfil(
     req: UpdateProfilRequest
@@ -55,7 +54,9 @@ export class ProfilService {
   // Notification settings
   updateNotifSettings(req: any): Observable<any> {
     return this.http.put(
-      `${this.API}/auth/notification-settings`, req);
+      `${this.API}/auth/notification-settings`, req,
+      { responseType: 'text' }
+    );
   }
 
   // RGPD
@@ -67,5 +68,27 @@ export class ProfilService {
   requestDataDeletion(): Observable<any> {
     return this.http.post(
       `${this.API}/auth/rgpd-deletion`, {});
+  }
+
+  // ── Photo de profil ──────────────────────────────────────────────────────
+
+  /**
+   * Upload une nouvelle photo de profil.
+   * Envoie le fichier en multipart/form-data.
+   * @returns Observable avec { photoUrl: string }
+   */
+  uploadPhoto(file: File): Observable<{ photoUrl: string }> {
+    const formData = new FormData();
+    formData.append('file', file);
+    return this.http.post<{ photoUrl: string }>(
+      `${this.API}/employe/photo`, formData
+    );
+  }
+
+  /**
+   * Supprime la photo de profil de l'employé connecté.
+   */
+  deletePhoto(): Observable<void> {
+    return this.http.delete<void>(`${this.API}/employe/photo`);
   }
 }

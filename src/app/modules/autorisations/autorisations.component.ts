@@ -1,5 +1,5 @@
 import {
-  Component, inject, OnInit, signal
+  Component, inject, OnInit, signal, computed, HostListener
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
@@ -95,14 +95,20 @@ const IC = {
         <span [innerHTML]="ic.plus | safeHtml"></span>
         Nouvelle demande
       </button>
-      <button class="tab" *ngIf="isManagerOrAbove()" [class.active]="activeTab() === 'en-attente'" (click)="setTab('en-attente')">
+      <!-- FIX: onglets Manager/RH maintenant visibles selon le rôle -->
+      <button class="tab" *ngIf="isManagerOrAbove()"
+              [class.active]="activeTab() === 'en-attente'"
+              (click)="setTab('en-attente')">
         <span [innerHTML]="ic.clock | safeHtml"></span>
         En attente
-        <span class="tab-count warning" *ngIf="enAttente().length > 0">{{ enAttente().length }}</span>
+        <span class="tab-count" [class.warning]="enAttente().length > 0">{{ enAttente().length }}</span>
       </button>
-      <button class="tab" *ngIf="isRHOrAdmin()" [class.active]="activeTab() === 'toutes'" (click)="setTab('toutes')">
+      <button class="tab" *ngIf="isRHOrAdmin()"
+              [class.active]="activeTab() === 'toutes'"
+              (click)="setTab('toutes')">
         <span [innerHTML]="ic.folder | safeHtml"></span>
-        Toutes les sorties
+        Toutes
+        <span class="tab-count">{{ toutesSorties().length }}</span>
       </button>
     </div>
   </div>
@@ -141,8 +147,8 @@ const IC = {
       </button>
     </div>
 
-    <div class="sorties-list" *ngIf="getFilteredMesSorties().length > 0">
-      <div class="sortie-card" *ngFor="let s of getFilteredMesSorties()"
+    <div class="sorties-list" *ngIf="filteredMesSorties().length > 0">
+      <div class="sortie-card" *ngFor="let s of filteredMesSorties()"
            [class]="'sortie-card ' + getStatutClass(s.statut)">
         <div class="sc-accent"></div>
 
@@ -208,7 +214,7 @@ const IC = {
                   (click)="ouvrirPointage(s)">
             <span [innerHTML]="ic.clockReturn | safeHtml"></span> Pointer retour
           </button>
-          <button class="btn btn-danger" *ngIf="canAnnuler(s)" (click)="annulerSortie(s.id)" [disabled]="actionLoading()">
+          <button class="btn btn-danger" *ngIf="canAnnuler(s)" (click)="demanderAnnulation(s)" [disabled]="actionLoading()">
             <span [innerHTML]="ic.ban | safeHtml"></span> Annuler
           </button>
           <button class="btn btn-outline" *ngIf="s.statut === 'VALIDEE'" (click)="exportAttestation(s)">
@@ -218,7 +224,7 @@ const IC = {
       </div>
     </div>
 
-    <div class="empty-state" *ngIf="getFilteredMesSorties().length === 0">
+    <div class="empty-state" *ngIf="filteredMesSorties().length === 0">
       <div class="empty-icon"><span [innerHTML]="ic.door | safeHtml"></span></div>
       <h3>Aucune autorisation</h3>
       <p>Vous n'avez pas encore de demande de sortie.</p>
@@ -236,14 +242,24 @@ const IC = {
         <div class="form-header-icon"><span [innerHTML]="ic.door | safeHtml"></span></div>
         <div>
           <h3>Nouvelle autorisation de sortie</h3>
-          <p>Maximum 4h — 3 sorties par mois</p>
+          <p>Maximum 2h — 3 sorties par mois</p>
+        </div>
+      </div>
+
+      <!-- FIX: Alerte limite mensuelle atteinte -->
+      <div class="limit-alert" *ngIf="compteurMois() >= 3">
+        <span [innerHTML]="ic.alertCircle | safeHtml"></span>
+        <div>
+          <strong>Limite mensuelle atteinte</strong>
+          <span>Vous avez déjà utilisé vos 3 autorisations de sortie ce mois-ci. Vous ne pouvez pas soumettre de nouvelle demande.</span>
         </div>
       </div>
 
       <div class="rules-info">
         <div class="rule-item">
           <span [innerHTML]="ic.limitTime | safeHtml"></span>
-          <span>Maximum 4h par sortie</span>
+          <span>Maximum 2h par sortie</span>
+
         </div>
         <div class="rule-item">
           <span [innerHTML]="ic.calRule | safeHtml"></span>
@@ -301,13 +317,23 @@ const IC = {
           </div>
         </div>
 
-        <div class="duree-preview" *ngIf="dureePreview() !== null">
-          <div class="dp-content" [class.error]="dureePreview()! > 240" [class.ok]="dureePreview()! > 0 && dureePreview()! <= 240">
-            <span class="dp-icon" [innerHTML]="(dureePreview()! > 240 ? ic.toastErr : ic.checkCircle) | safeHtml"></span>
+        <div class="duree-preview" *ngIf="dureePreview() !== null || dureeErreur()">
+          <!-- FIX: Erreur si heure retour avant heure sortie -->
+          <div class="dp-content error" *ngIf="dureeErreur()">
+            <span class="dp-icon" [innerHTML]="ic.toastErr | safeHtml"></span>
+            <div>
+              <strong>Heures invalides</strong>
+              <span>L'heure de retour doit être après l'heure de sortie</span>
+            </div>
+          </div>
+          <div class="dp-content" *ngIf="dureePreview() !== null && !dureeErreur()"
+               [class.error]="dureePreview()! > 120"
+               [class.ok]="dureePreview()! > 0 && dureePreview()! <= 120">
+            <span class="dp-icon" [innerHTML]="(dureePreview()! > 120 ? ic.toastErr : ic.checkCircle) | safeHtml"></span>
             <div>
               <strong>Durée : {{ formatDuree(dureePreview()!) }}</strong>
-              <span *ngIf="dureePreview()! > 240">Dépasse la limite de 4h</span>
-              <span *ngIf="dureePreview()! <= 240 && dureePreview()! > 0">Dans la limite autorisée</span>
+              <span *ngIf="dureePreview()! > 120">Dépasse la limite de 2h</span>
+              <span *ngIf="dureePreview()! <= 120 && dureePreview()! > 0">Dans la limite autorisée</span>
             </div>
           </div>
         </div>
@@ -327,7 +353,7 @@ const IC = {
 
         <div class="form-actions">
           <button type="button" class="btn btn-outline" (click)="sortieForm.reset()">Réinitialiser</button>
-          <button type="submit" class="btn btn-primary" [disabled]="submitLoading() || (dureePreview() ?? 0) > 240">
+          <button type="submit" class="btn btn-primary" [disabled]="submitLoading() || (dureePreview() ?? 0) > 120 || dureeErreur() || compteurMois() >= 3">
             <span *ngIf="!submitLoading()"><span [innerHTML]="ic.send | safeHtml"></span> Soumettre</span>
             <span *ngIf="submitLoading()" class="spinner"></span>
           </button>
@@ -467,7 +493,7 @@ const IC = {
             </tr>
           </thead>
           <tbody>
-            <tr *ngFor="let s of getRHFiltered()">
+            <tr *ngFor="let s of rhFilteredPage()">
               <td>
                 <div class="user-cell">
                   <div class="mini-avatar">{{ getInitiales(s) }}</div>
@@ -507,9 +533,13 @@ const IC = {
           </tbody>
         </table>
       </div>
+      <!-- AJOUT: Pagination -->
+      <div class="pagination" *ngIf="rhTotalPages() > 1">
+        <button class="page-btn" [disabled]="rhPage() === 1" (click)="rhPage.set(rhPage() - 1)">&#8249;</button>
+        <span class="page-info">Page {{ rhPage() }} / {{ rhTotalPages() }}</span>
+        <button class="page-btn" [disabled]="rhPage() === rhTotalPages()" (click)="rhPage.set(rhPage() + 1)">&#8250;</button>
+      </div>
     </div>
-
-    <!-- Modal validation RH -->
     <div class="modal-overlay" *ngIf="selectedSortieRH()" (click)="selectedSortieRH.set(null)">
       <div class="modal" (click)="$event.stopPropagation()">
         <div class="modal-header">
@@ -557,14 +587,45 @@ const IC = {
         </div>
         <div class="form-group" style="margin-top:16px">
           <label>Heure de retour réelle</label>
-          <input type="time" [(ngModel)]="heureRetourReelle" />
+          <input type="time" [(ngModel)]="heureRetourReelle" [min]="sortieAPointer()?.heureSortie" />
+        </div>
+        <!-- FIX: Alerte heure retour invalide -->
+        <div class="form-alert error" style="margin-top:10px"
+             *ngIf="heureRetourReelle && sortieAPointer() && heureRetourReelle <= sortieAPointer()!.heureSortie">
+          <span [innerHTML]="ic.alertCircle | safeHtml"></span>
+          Le retour doit être après l'heure de sortie ({{ sortieAPointer()?.heureSortie }})
         </div>
       </div>
       <div class="modal-footer">
         <button class="btn btn-outline" (click)="sortieAPointer.set(null)">Annuler</button>
-        <button class="btn btn-primary" (click)="confirmerPointage()" [disabled]="!heureRetourReelle || pointageLoading()">
+        <button class="btn btn-primary" (click)="confirmerPointage()"
+                [disabled]="!heureRetourReelle || pointageLoading() ||
+                            (heureRetourReelle <= (sortieAPointer()?.heureSortie ?? ''))">
           <span *ngIf="!pointageLoading()"><span [innerHTML]="ic.check | safeHtml"></span> Confirmer le retour</span>
           <span *ngIf="pointageLoading()" class="spinner"></span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- FIX: Modale de confirmation annulation (remplace confirm()) -->
+  <div class="modal-overlay" *ngIf="sortieAnnuler()" (click)="sortieAnnuler.set(null)">
+    <div class="modal confirm-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3><span [innerHTML]="ic.ban | safeHtml"></span> Confirmer l'annulation</h3>
+        <button class="modal-close" (click)="sortieAnnuler.set(null)" [innerHTML]="ic.close | safeHtml"></button>
+      </div>
+      <div class="modal-body">
+        <p>Êtes-vous sûr de vouloir annuler l'autorisation du
+          <strong>{{ sortieAnnuler()?.dateSortie | date:'dd/MM/yyyy' }}</strong>
+          ({{ sortieAnnuler()?.heureSortie }} → {{ sortieAnnuler()?.heureRetourPrevue }}) ?
+        </p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" (click)="sortieAnnuler.set(null)">Non, garder</button>
+        <button class="btn btn-danger" (click)="confirmerAnnulation()" [disabled]="actionLoading()">
+          <span *ngIf="!actionLoading()"><span [innerHTML]="ic.ban | safeHtml"></span> Oui, annuler</span>
+          <span *ngIf="actionLoading()" class="spinner" style="border-color:rgba(229,62,62,0.3);border-top-color:#e53e3e"></span>
         </button>
       </div>
     </div>
@@ -769,6 +830,18 @@ const IC = {
     /* ── Toast ── */
     .toast { position: fixed; bottom: 24px; right: 24px; padding: 13px 18px; border-radius: var(--r); font-size: 13px; font-weight: 600; transform: translateY(80px); opacity: 0; transition: all 0.3s ease; z-index: 2000; box-shadow: 0 8px 24px rgba(0,0,0,0.12); display: flex; align-items: center; gap: 8px; svg { display: block; } &.show { transform: translateY(0); opacity: 1; } &.toast--success { background: var(--c-green-lt); color: var(--c-green); } &.toast--error { background: var(--c-red-lt); color: var(--c-red); } &.toast--info { background: var(--c-teal-lt); color: var(--c-teal); } }
 
+    /* ── Limit alert ── */
+    .limit-alert { display: flex; align-items: flex-start; gap: 12px; background: #fed7d7; border: 1px solid #fc8181; border-radius: var(--r); padding: 14px 16px; margin-bottom: 20px; color: var(--c-red); svg { flex-shrink: 0; margin-top: 2px; display: block; } strong { display: block; font-size: 14px; font-weight: 700; margin-bottom: 3px; } span { font-size: 13px; } }
+
+    /* ── Pagination ── */
+    .pagination { display: flex; align-items: center; justify-content: center; gap: 14px; padding-top: 14px; border-top: 1px solid var(--c-gray-200); margin-top: 4px; }
+    .page-btn { width: 32px; height: 32px; border: 1.5px solid var(--c-gray-200); background: white; border-radius: 8px; cursor: pointer; font-size: 18px; color: var(--c-muted); display: flex; align-items: center; justify-content: center; transition: all 0.2s; &:hover:not(:disabled) { border-color: var(--c-teal); color: var(--c-teal); } &:disabled { opacity: 0.4; cursor: not-allowed; } }
+    .page-info { font-size: 13px; color: var(--c-muted); font-weight: 600; }
+
+    /* ── Confirm modal ── */
+    .confirm-modal { width: 420px; }
+    .modal-body p { font-size: 14px; color: var(--c-text); line-height: 1.6; margin: 0; strong { color: var(--c-red); } }
+
     /* ── Spinner ── */
     .spinner { width: 18px; height: 18px; display: inline-block; border: 2.5px solid rgba(255,255,255,0.35); border-top-color: white; border-radius: 50%; animation: spin 0.75s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
@@ -802,14 +875,17 @@ export class AutorisationsComponent implements OnInit {
   rhSearch       = signal('');
   rhFilterStatut = signal('');
   rhFilterType   = signal('');
+  rhPage         = signal(1); // FIX: pagination
 
   validatingId          = signal<number | null>(null);
   validationCommentaire = '';
   selectedSortieRH      = signal<AutorisationSortie | null>(null);
   sortieAPointer        = signal<AutorisationSortie | null>(null);
+  sortieAnnuler         = signal<AutorisationSortie | null>(null); // FIX: modale annulation
   heureRetourReelle     = '';
 
   dureePreview = signal<number | null>(null);
+  dureeErreur  = signal(false); // FIX: erreur heures incohérentes
   formError    = signal('');
   formSuccess  = signal('');
 
@@ -839,6 +915,53 @@ export class AutorisationsComponent implements OnInit {
     motif: ['', [Validators.required, Validators.minLength(5)]]
   });
 
+  // FIX: computed() signals — recalcul réactif sans re-render inutile
+  compteurMoisSignal = computed(() => {
+    const now = new Date();
+    return this.mesSorties().filter(s => {
+      if (!s.dateSortie) return false;
+      const d = new Date(s.dateSortie);
+      return d.getMonth() === now.getMonth()
+          && d.getFullYear() === now.getFullYear()
+          && !['ANNULEE', 'REJETEE'].includes(s.statut);
+    }).length;
+  });
+
+  filteredMesSorties = computed(() =>
+    this.mesSorties().filter(s =>
+      (!this.filterStatut() || s.statut === this.filterStatut()) &&
+      (!this.filterType()   || s.typeSortie === this.filterType())
+    )
+  );
+
+  rhFiltered = computed(() =>
+    this.toutesSorties().filter(s => {
+      const term = this.rhSearch().toLowerCase();
+      const match = !term
+        || s.employeNom?.toLowerCase().includes(term)
+        || s.employePrenom?.toLowerCase().includes(term);
+      return match
+        && (!this.rhFilterStatut() || s.statut === this.rhFilterStatut())
+        && (!this.rhFilterType()   || s.typeSortie === this.rhFilterType());
+    })
+  );
+
+  rhTotalPages = computed(() => Math.max(1, Math.ceil(this.rhFiltered().length / 10)));
+
+  rhFilteredPage = computed(() => {
+    const p = this.rhPage();
+    return this.rhFiltered().slice((p - 1) * 10, p * 10);
+  });
+
+  // FIX: fermeture modales avec touche Escape
+  @HostListener('document:keydown.escape')
+  onEscape(): void {
+    if (this.sortieAPointer())   this.sortieAPointer.set(null);
+    if (this.selectedSortieRH()) this.selectedSortieRH.set(null);
+    if (this.sortieAnnuler())    this.sortieAnnuler.set(null);
+    if (this.validatingId())     this.validatingId.set(null);
+  }
+
   ngOnInit(): void { this.loadData(); }
 
   private loadData(): void {
@@ -863,14 +986,21 @@ export class AutorisationsComponent implements OnInit {
 
   setTab(tab: Tab): void { this.activeTab.set(tab); this.formError.set(''); this.formSuccess.set(''); }
 
+  // FIX: gère les heures incohérentes (retour avant sortie)
   calculerDuree(): void {
     const h = this.sortieForm.get('heureSortie')?.value;
     const r = this.sortieForm.get('heureRetourPrevue')?.value;
-    if (!h || !r) { this.dureePreview.set(null); return; }
+    if (!h || !r) { this.dureePreview.set(null); this.dureeErreur.set(false); return; }
     const [hh, hm] = h.split(':').map(Number);
     const [rh, rm] = r.split(':').map(Number);
     const minutes = (rh * 60 + rm) - (hh * 60 + hm);
-    this.dureePreview.set(minutes > 0 ? minutes : null);
+    if (minutes <= 0) {
+      this.dureePreview.set(null);
+      this.dureeErreur.set(true);
+    } else {
+      this.dureePreview.set(minutes);
+      this.dureeErreur.set(false);
+    }
   }
 
   formatDuree(minutes: number): string {
@@ -880,25 +1010,50 @@ export class AutorisationsComponent implements OnInit {
 
   onSubmit(): void {
     if (this.sortieForm.invalid) { this.sortieForm.markAllAsTouched(); return; }
+    // FIX: vérification limite mensuelle côté client
+    if (this.compteurMois() >= 3) {
+      this.formError.set('Vous avez atteint la limite de 3 autorisations ce mois-ci.');
+      return;
+    }
+    // FIX: bloquer si heures incohérentes
+    if (this.dureeErreur()) {
+      this.formError.set('L\'heure de retour doit être après l\'heure de sortie.');
+      return;
+    }
     this.submitLoading.set(true); this.formError.set('');
     this.autorisationService.creerDemande(this.sortieForm.value as any).subscribe({
       next: (data) => {
         this.submitLoading.set(false);
         this.formSuccess.set('Demande soumise avec succès !');
         this.mesSorties.update(s => [data, ...s]);
-        this.sortieForm.reset(); this.dureePreview.set(null);
+        this.sortieForm.reset(); this.dureePreview.set(null); this.dureeErreur.set(false);
         setTimeout(() => { this.formSuccess.set(''); this.setTab('mes-sorties'); }, 1500);
       },
       error: (err) => { this.submitLoading.set(false); this.formError.set(err.error?.message ?? 'Erreur lors de la création.'); }
     });
   }
 
-  annulerSortie(id: number): void {
-    if (!confirm('Annuler cette autorisation ?')) return;
+  // FIX: remplace confirm() natif par une modale propre
+  demanderAnnulation(s: AutorisationSortie): void {
+    this.sortieAnnuler.set(s);
+  }
+
+  confirmerAnnulation(): void {
+    const s = this.sortieAnnuler();
+    if (!s) return;
     this.actionLoading.set(true);
-    this.autorisationService.annuler(id).subscribe({
-      next: (data) => { this.actionLoading.set(false); this.mesSorties.update(s => s.map(x => x.id === id ? data : x)); this.showToast('Autorisation annulée', 'info'); },
-      error: () => { this.actionLoading.set(false); this.showToast('Erreur lors de l\'annulation', 'error'); }
+    this.autorisationService.annuler(s.id).subscribe({
+      next: (data) => {
+        this.actionLoading.set(false);
+        this.sortieAnnuler.set(null);
+        this.mesSorties.update(list => list.map(x => x.id === s.id ? data : x));
+        this.showToast('Autorisation annulée', 'info');
+      },
+      error: () => {
+        this.actionLoading.set(false);
+        this.sortieAnnuler.set(null);
+        this.showToast('Erreur lors de l\'annulation', 'error');
+      }
     });
   }
 
@@ -906,6 +1061,11 @@ export class AutorisationsComponent implements OnInit {
 
   confirmerPointage(): void {
     const s = this.sortieAPointer(); if (!s || !this.heureRetourReelle) return;
+    // FIX: validation heure retour > heure sortie
+    if (this.heureRetourReelle <= s.heureSortie) {
+      this.showToast('Le retour doit être après l\'heure de sortie', 'error');
+      return;
+    }
     this.pointageLoading.set(true);
     this.autorisationService.pointerRetour(s.id, { heureRetourReelle: this.heureRetourReelle }).subscribe({
       next: (data) => { this.pointageLoading.set(false); this.sortieAPointer.set(null); this.mesSorties.update(list => list.map(x => x.id === s.id ? data : x)); this.showToast('Retour pointé avec succès !', 'success'); },
@@ -919,7 +1079,16 @@ export class AutorisationsComponent implements OnInit {
       ? this.autorisationService.validerRH(id, { approuve, commentaire: this.validationCommentaire })
       : this.autorisationService.validerManager(id, { approuve, commentaire: this.validationCommentaire });
     service.subscribe({
-      next: () => { this.validationLoading.set(false); this.validatingId.set(null); this.enAttente.update(d => d.filter(s => s.id !== id)); this.showToast(approuve ? 'Autorisation approuvée !' : 'Autorisation rejetée', approuve ? 'success' : 'error'); },
+      next: (data) => {
+        this.validationLoading.set(false);
+        this.validatingId.set(null);
+        this.enAttente.update(d => d.filter(s => s.id !== id));
+        // FIX: sync toutesSorties si RH
+        if (this.isRHOrAdmin()) {
+          this.toutesSorties.update(list => list.map(x => x.id === id ? data : x));
+        }
+        this.showToast(approuve ? 'Autorisation approuvée !' : 'Autorisation rejetée', approuve ? 'success' : 'error');
+      },
       error: (err) => { this.validationLoading.set(false); this.showToast(err.error?.message ?? 'Erreur', 'error'); }
     });
   }
@@ -930,7 +1099,14 @@ export class AutorisationsComponent implements OnInit {
     const s = this.selectedSortieRH(); if (!s) return;
     this.validationLoading.set(true);
     this.autorisationService.validerRH(s.id, { approuve, commentaire: this.validationCommentaire }).subscribe({
-      next: (data) => { this.validationLoading.set(false); this.selectedSortieRH.set(null); this.toutesSorties.update(list => list.map(x => x.id === s.id ? data : x)); this.showToast(approuve ? 'Validée !' : 'Rejetée', approuve ? 'success' : 'error'); },
+      next: (data) => {
+        this.validationLoading.set(false);
+        this.selectedSortieRH.set(null);
+        // FIX: sync enAttente + toutesSorties
+        this.toutesSorties.update(list => list.map(x => x.id === s.id ? data : x));
+        this.enAttente.update(list => list.filter(x => x.id !== s.id));
+        this.showToast(approuve ? 'Validée !' : 'Rejetée', approuve ? 'success' : 'error');
+      },
       error: (err) => { this.validationLoading.set(false); this.showToast(err.error?.message ?? 'Erreur', 'error'); }
     });
   }
@@ -945,31 +1121,15 @@ export class AutorisationsComponent implements OnInit {
   }
 
   // ── Computed ──
-  compteurMois(): number {
-    const now = new Date();
-    return this.mesSorties().filter(s => {
-      if (!s.dateSortie) return false;
-      const d = new Date(s.dateSortie);
-      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear() && !['ANNULEE','REJETEE'].includes(s.statut);
-    }).length;
-  }
+  // FIX: compteurMois() appelle le computed signal (plus de recalcul à chaque render)
+  compteurMois(): number { return this.compteurMoisSignal(); }
 
   getSortiesToday(): AutorisationSortie[] {
     const today = new Date().toISOString().split('T')[0];
     return this.mesSorties().filter(s => s.dateSortie === today && ['VALIDEE','EN_ATTENTE_MANAGER','EN_ATTENTE_RH'].includes(s.statut));
   }
 
-  getFilteredMesSorties(): AutorisationSortie[] {
-    return this.mesSorties().filter(s => (!this.filterStatut() || s.statut === this.filterStatut()) && (!this.filterType() || s.typeSortie === this.filterType()));
-  }
-
-  getRHFiltered(): AutorisationSortie[] {
-    return this.toutesSorties().filter(s => {
-      const term = this.rhSearch().toLowerCase();
-      const match = !term || s.employeNom?.toLowerCase().includes(term) || s.employePrenom?.toLowerCase().includes(term);
-      return match && (!this.rhFilterStatut() || s.statut === this.rhFilterStatut()) && (!this.rhFilterType() || s.typeSortie === this.rhFilterType());
-    });
-  }
+  // FIX: méthodes supprimées — remplacées par computed() signals filteredMesSorties, rhFilteredPage
 
   getRHStats() {
     const all = this.toutesSorties();
@@ -991,7 +1151,7 @@ export class AutorisationsComponent implements OnInit {
   getInitiales(s: AutorisationSortie): string { return ((s.employePrenom?.[0] ?? '') + (s.employeNom?.[0] ?? '')).toUpperCase(); }
 
   getSubtitle(): string {
-    const map: Record<string,string> = { EMPLOYE: 'Gérez vos autorisations de sortie', MANAGER: 'Gérez les sorties de votre équipe', RH: 'Supervision de toutes les autorisations', ADMIN: 'Administration des autorisations de sortie' };
+    const map: Record<string,string> = { EMPLOYE: 'Gérez vos autorisations de sortie', MANAGER: 'Validez les demandes de votre équipe', RH: 'Supervision de toutes les autorisations', ADMIN: 'Administration des autorisations de sortie' };
     return map[this.role] ?? '';
   }
 
