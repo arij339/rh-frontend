@@ -873,7 +873,7 @@ export class ResetPasswordComponent {
     this.loading.set(true);
     this.errorMsg.set('');
 
-    this.http.post('http://localhost:8080/api/auth/reset-password', {
+    this.http.post('/api/auth/reset-password', {
       token:       this.token,
       newPassword: this.form.value.newPassword
     }, { responseType: 'text' }).subscribe({

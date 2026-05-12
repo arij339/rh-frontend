@@ -1410,7 +1410,7 @@ export class AdminUsersComponent implements OnInit {
 
   private http = inject(HttpClient);
   private fb   = inject(FormBuilder);
-  private API  = 'http://localhost:8080/api';
+  private API  = '/api';
 
   svg = SVG;
 

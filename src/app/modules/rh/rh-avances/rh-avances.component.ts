@@ -567,7 +567,7 @@ export class RhAvancesComponent implements OnInit {
 
   private avanceService = inject(AvanceService);
   private http          = inject(HttpClient);
-  private API           = 'http://localhost:8080/api';
+  private API           = '/api';
 
   ic = IC;
 

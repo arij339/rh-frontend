@@ -6,7 +6,7 @@ import { Observable, forkJoin } from 'rxjs';
 export class AdminService {
 
   private http = inject(HttpClient);
-  private API  = 'http://localhost:8080/api';
+  private API  = '/api';
 
   // ===== USERS =====
   getAllUsers(): Observable<any[]> {

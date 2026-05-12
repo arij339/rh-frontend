@@ -9,7 +9,7 @@ import {
 export class ProfilService {
 
   private http = inject(HttpClient);
-  private API  = 'http://localhost:8080/api';
+  private API  = '/api';
 
   // Mon profil
   getMonProfil(): Observable<ProfilEmploye> {

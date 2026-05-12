@@ -11,7 +11,7 @@ import {
 export class ReclamationService {
 
   private http = inject(HttpClient);
-  private API  = 'http://localhost:8080/api';
+  private API  = '/api';
 
   // ===== EMPLOYÉ =====
   creer(req: ReclamationRequest): Observable<Reclamation> {

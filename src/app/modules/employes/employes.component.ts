@@ -792,7 +792,7 @@ export class EmployesComponent implements OnInit {
   private http  = inject(HttpClient);
   private auth  = inject(AuthService);
   private fb    = inject(FormBuilder);
-  private API   = 'http://localhost:8080/api';
+  private API   = '/api';
 
   ic = IC;
 

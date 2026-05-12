@@ -17,7 +17,7 @@ import { inject } from '@angular/core';
 export class UserPhotoService {
 
   private http = inject(HttpClient);
-  private API  = 'http://localhost:8080/api';
+  private API  = '/api';
 
   /** Signal global : URL de la photo ou null */
   photoUrl = signal<string | null>(null);
@@ -35,7 +35,7 @@ export class UserPhotoService {
   /** Met à jour la photo en mémoire (appelé après upload réussi) */
   setPhoto(url: string | null): void {
     if (url && url.startsWith('/')) {
-      this.photoUrl.set('http://localhost:8080' + url);
+      this.photoUrl.set('' + url);
     } else {
       this.photoUrl.set(url);
     }

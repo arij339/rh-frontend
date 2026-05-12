@@ -445,7 +445,7 @@ const SVG = {
 export class AdminLogsComponent implements OnInit {
 
   private http = inject(HttpClient);
-  private API  = 'http://localhost:8080/api';
+  private API  = '/api';
 
   svg = SVG;
 

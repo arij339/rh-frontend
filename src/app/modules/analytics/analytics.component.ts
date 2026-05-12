@@ -939,7 +939,7 @@ export class AnalyticsComponent implements OnInit, AfterViewInit {
     { value: 9,  label: 'Septembre'}, { value: 10, label: 'Octobre'   },
     { value: 11, label: 'Novembre' }, { value: 12, label: 'Décembre'  },
   ];
-  anneeList = [2024, 2025, 2026];
+  anneeList = Array.from({ length: 3 }, (_, i) => new Date().getFullYear() - 1 + i);
 
   ngOnInit():      void { this.loadData(); }
   ngAfterViewInit(): void { }
@@ -1014,57 +1014,102 @@ export class AnalyticsComponent implements OnInit, AfterViewInit {
     this.tauxResolutionReclamations.set(reclamations.length > 0 ? Math.round((recResolues / reclamations.length) * 100) : 0);
 
     // Avances
-    const avAttente = avances.filter((a: any) => a.statut === 'EN_ATTENTE');
+    // FIX : le statut réel côté backend est EN_ATTENTE_RH (pas EN_ATTENTE)
+    const avAttente = avances.filter((a: any) => a.statut === 'EN_ATTENTE_RH');
     this.avancesEnAttente.set(avAttente.length);
     this.montantTotalAvances.set(avAttente.reduce((s: number, a: any) => s + (a.montantDemande || 0), 0));
 
-    // Augmentations
-    this.augmentationsEnAttente.set(augmentations.filter((a: any) => ['EN_ATTENTE','AVIS_MANAGER_POS','AVIS_MANAGER_NEG'].includes(a.statut)).length);
-    this.augmentationsApprouvees.set(augmentations.filter((a: any) => a.statut === 'APPROUVEE').length);
-    this.montantTotalAugmentDemande.set(augmentations.reduce((s: number, a: any) => s + (a.montantDemande || 0), 0));
-    this.montantTotalAugmentAccorde.set(augmentations.filter((a: any) => a.statut === 'APPROUVEE').reduce((s: number, a: any) => s + (a.montantAccorde || 0), 0));
+    // Augmentations — FIX : vrais statuts = EN_ATTENTE_MANAGER, EN_ATTENTE_RH, VALIDEE, REJETEE, ANNULEE
+    this.augmentationsEnAttente.set(augmentations.filter((a: any) => ['EN_ATTENTE_MANAGER','EN_ATTENTE_RH'].includes(a.statut)).length);
+    this.augmentationsApprouvees.set(augmentations.filter((a: any) => a.statut === 'VALIDEE').length);
+    this.montantTotalAugmentDemande.set(augmentations.reduce((s: number, a: any) => s + (Number(a.montantDemande) || 0), 0));
+    this.montantTotalAugmentAccorde.set(augmentations.filter((a: any) => a.statut === 'VALIDEE').reduce((s: number, a: any) => s + (Number(a.montantAccorde) || 0), 0));
 
     // Présence
-    const absents = conges.filter((c: any) => {
-      if (c.statut !== 'VALIDEE') return false;
-      const debut = new Date(c.dateDebut), fin = new Date(c.dateFin);
-      return debut <= today && fin >= today;
-    }).length;
-    const total = Math.max(employes.length, 1);
-    const presents = Math.max(total - absents, 0);
-    this.joursAbsents.set(absents);
+    // CORRECTION : compte aussi les autorisations de sortie validées du jour
+    const absentsCongeIds = conges
+      .filter((c: any) => {
+        if (c.statut !== 'VALIDEE') return false;
+        const debut = new Date(c.dateDebut), fin = new Date(c.dateFin);
+        return debut <= today && fin >= today;
+      })
+      // FIX : champ plat employeId, pas employe.id
+      .map((c: any) => c.employeId)
+      .filter(Boolean);
+
+    const absentsSortieIds = sorties
+      .filter((s: any) => {
+        if (s.statut !== 'VALIDEE') return false;
+        const dateSortie = new Date(s.dateSortie ?? s.createdAt);
+        return dateSortie.toDateString() === today.toDateString();
+      })
+      // FIX : champ plat employeId
+      .map((s: any) => s.employeId)
+      .filter(Boolean);
+
+    const absentsIds = new Set([...absentsCongeIds, ...absentsSortieIds]);
+    const nbAbsents  = absentsIds.size;
+    const total      = Math.max(employes.length, 1);
+    const presents   = Math.max(total - nbAbsents, 0);
+    this.joursAbsents.set(nbAbsents);
     this.joursPresents.set(presents);
     this.tauxPresence.set(Math.round((presents / total) * 100));
-    this.sortiesToday.set(absents);
-
-    // Soldes (simulated from conge data)
-    this.buildSoldesMap(employes, conges);
+    this.sortiesToday.set(nbAbsents);
 
     // Top absences
     this.computeTopAbsences(employes, conges);
 
-    // Faible solde
-    this.computeFaibleSolde(employes);
-
     // Top réclamants
     this.computeTopReclamants(employes, reclamations);
 
-    // Alertes
+    // Alertes (sans les soldes pour l'instant — mise à jour après chargement)
     this.computeAlertes(data);
+
+    // Soldes depuis l'API (réels, tient compte des reports et ajustements).
+    // computeFaibleSolde et computeAlertes sont rappelés à la fin du chargement.
+    this.loadSoldesReels(employes, data);
   }
 
-  private buildSoldesMap(employes: any[], conges: any[]): void {
-    const annee = this.selectedAnnee;
+  // FIX : les soldes sont chargés de façon asynchrone.
+  // On ne calcule emploesFaibleSolde et alertes QU'APRÈS avoir reçu TOUTES
+  // les réponses, pour éviter que les employés avec un solde non encore chargé
+  // (valeur temporaire 0) soient faussement classés "solde insuffisant".
+  private loadSoldesReels(employes: any[], data: any): void {
+    if (!employes.length) return;
+
+    // Réinitialiser complètement la map pour éviter des valeurs obsolètes
+    // d'un précédent chargement (changement d'année ou de département).
+    this.soldesMap = {};
+
+    let pending = employes.length;
+
     employes.forEach((e: any) => {
-      const joursPris = conges
-        .filter((c: any) => c.employe?.id === e.id && c.statut === 'VALIDEE' &&
-          new Date(c.dateDebut).getFullYear() === annee)
-        .reduce((s: number, c: any) => s + (c.joursOuvrables || 0), 0);
-      this.soldesMap[e.id] = Math.max(21 - joursPris, 0);
+      this.analyticsService.getSoldeEmploye(e.id).subscribe({
+        next: (soldes: any[]) => {
+          const soldeAnnuel = soldes.find((s: any) =>
+            s.typeConge === 'ANNUEL' && s.annee === this.selectedAnnee
+          );
+          // FIX : utiliser joursRestants réel, pas 0 par défaut
+          this.soldesMap[e.id] = soldeAnnuel?.joursRestants ?? 21;
+        },
+        error: () => {
+          // En cas d'erreur réseau, on suppose le solde complet (21j)
+          // pour ne pas générer de fausse alerte.
+          this.soldesMap[e.id] = 21;
+        },
+        complete: () => {
+          pending--;
+          // Recalculer seulement quand TOUS les soldes sont reçus
+          if (pending === 0) {
+            this.computeFaibleSolde(this.filteredEmployes());
+            this.computeAlertes(data);
+          }
+        }
+      });
     });
   }
 
-  getSoldeEmploye(id: number): number { return this.soldesMap[id] ?? 21; }
+  getSoldeEmploye(id: number): number { return this.soldesMap[id] ?? 0; }
 
   private computeFaibleSolde(employes: any[]): void {
     const faibles = employes
@@ -1077,9 +1122,10 @@ export class AnalyticsComponent implements OnInit, AfterViewInit {
   private computeTopAbsences(employes: any[], conges: any[]): void {
     const annee = this.selectedAnnee;
     const map: Record<number, any> = {};
+    // FIX : DemandeCongeResponse expose employeId (plat), pas employe.id (objet imbriqué)
     conges.filter((c: any) => c.statut === 'VALIDEE' && new Date(c.dateDebut).getFullYear() === annee)
       .forEach((c: any) => {
-        const eid = c.employe?.id;
+        const eid = c.employeId;
         if (!eid) return;
         if (!map[eid]) { const e = employes.find((emp: any) => emp.id === eid); if (!e) return; map[eid] = { ...e, joursPris: 0, nbDemandes: 0 }; }
         map[eid].joursPris += (c.joursOuvrables || 0);
@@ -1089,15 +1135,37 @@ export class AnalyticsComponent implements OnInit, AfterViewInit {
     this.topAbsences.set(sorted);
   }
 
+  // CORRECTION : garde l'urgence la plus élevée (pas la dernière de la liste)
+  // et le statut le plus récent (en triant par date).
   private computeTopReclamants(employes: any[], reclamations: any[]): void {
+    const URGENCE_PRIO: Record<string, number> = {
+      CRITIQUE: 4, URGENT: 3, NORMAL: 2, FAIBLE: 1
+    };
     const map: Record<number, any> = {};
-    reclamations.forEach((r: any) => {
-      const eid = r.employe?.id;
+
+    // Trier par date ASC pour que le dernier = le plus récent
+    const sorted = [...reclamations].sort((a: any, b: any) =>
+      new Date(a.createdAt ?? 0).getTime() - new Date(b.createdAt ?? 0).getTime()
+    );
+
+    sorted.forEach((r: any) => {
+      // FIX : ReclamationResponse expose employeId (plat), pas employe.id
+      const eid = r.employeId;
       if (!eid) return;
-      if (!map[eid]) { const e = employes.find((emp: any) => emp.id === eid); if (!e) return; map[eid] = { ...e, nbReclamations: 0, derniereUrgence: null, dernierStatut: null }; }
+      if (!map[eid]) {
+        const e = employes.find((emp: any) => emp.id === eid);
+        if (!e) return;
+        map[eid] = { ...e, nbReclamations: 0, derniereUrgence: null, dernierStatut: null };
+      }
       map[eid].nbReclamations++;
-      map[eid].derniereUrgence = r.niveauUrgence;
-      map[eid].dernierStatut   = r.statut;
+      // Garder l'urgence la plus haute
+      const prioCurrent = URGENCE_PRIO[r.niveauUrgence] ?? 0;
+      const prioStored  = URGENCE_PRIO[map[eid].derniereUrgence] ?? 0;
+      if (prioCurrent >= prioStored) {
+        map[eid].derniereUrgence = r.niveauUrgence;
+      }
+      // Statut le plus récent (dernier dans le tableau trié)
+      map[eid].dernierStatut = r.statut;
     });
     this.topReclamants.set(Object.values(map).sort((a: any, b: any) => b.nbReclamations - a.nbReclamations).slice(0, 6));
   }
@@ -1107,8 +1175,11 @@ export class AnalyticsComponent implements OnInit, AfterViewInit {
     if (this.congesEnAttente() >= 5) alertes.push({ level: 'warning', icon: IC.calendar, title: 'Congés en attente', message: `${this.congesEnAttente()} demandes nécessitent votre validation` });
     if (this.reclamationsCritiques() > 0) alertes.push({ level: 'danger', icon: IC.chat, title: 'Réclamations critiques', message: `${this.reclamationsCritiques()} réclamation(s) CRITIQUE en attente` });
     if (this.augmentationsEnAttente() >= 3) alertes.push({ level: 'info', icon: IC.salary, title: 'Augmentations en attente', message: `${this.augmentationsEnAttente()} dossiers d'augmentation à traiter` });
-    if (this.emploesFaibleSolde().filter((e: any) => e.soldeRestant <= 2).length > 0)
-      alertes.push({ level: 'warning', icon: IC.warning, title: 'Soldes critiques', message: `${this.emploesFaibleSolde().filter((e: any) => e.soldeRestant <= 2).length} employé(s) avec moins de 2 jours de congé` });
+    // FIX : n'ajouter l'alerte soldes critiques que si la liste est déjà calculée
+    // (après chargement async des soldes). Filtre sur <= 2 jours restants.
+    const critique = this.emploesFaibleSolde().filter((e: any) => e.soldeRestant <= 2);
+    if (critique.length > 0)
+      alertes.push({ level: 'warning', icon: IC.warning, title: 'Soldes critiques', message: `${critique.length} employé(s) avec moins de 2 jours de congé` });
     this.alertes.set(alertes);
   }
 
@@ -1218,7 +1289,8 @@ export class AnalyticsComponent implements OnInit, AfterViewInit {
     if (!depts.length) return;
     const joursParDept = depts.map(d => {
       const empIds = employes.filter((e: any) => e.departement === d).map((e: any) => e.id);
-      return conges.filter((c: any) => c.statut === 'VALIDEE' && empIds.includes(c.employe?.id))
+      // FIX : champ plat employeId, pas employe.id
+      return conges.filter((c: any) => c.statut === 'VALIDEE' && empIds.includes(c.employeId))
         .reduce((s: number, c: any) => s + (c.joursOuvrables || 0), 0);
     });
     this.charts.push(new Chart(this.deptChartRef.nativeElement, {
@@ -1247,7 +1319,8 @@ export class AnalyticsComponent implements OnInit, AfterViewInit {
 
   private buildAvanceChart(avances: any[]): void {
     if (!this.avanceChartRef) return;
-    const colorMap: Record<string,string> = { EN_ATTENTE: '#d69e2e', APPROUVEE: '#38a169', REJETEE: '#e53e3e', REMBOURSEE: '#0e9daf', ANNULEE: '#cbd5e0' };
+    // FIX : les statuts réels sont EN_ATTENTE_RH, VALIDEE, REJETEE, ANNULEE, EN_COURS, SOLDEE
+    const colorMap: Record<string,string> = { EN_ATTENTE_RH: '#d69e2e', VALIDEE: '#38a169', REJETEE: '#e53e3e', EN_COURS: '#0e9daf', SOLDEE: '#805ad5', ANNULEE: '#cbd5e0' };
     const statuts: Record<string, number> = {};
     avances.forEach((a: any) => { statuts[a.statut] = (statuts[a.statut] || 0) + 1; });
     if (!Object.keys(statuts).length) statuts['Aucune'] = 1;
@@ -1262,9 +1335,10 @@ export class AnalyticsComponent implements OnInit, AfterViewInit {
 
   private buildAugmentChart(augmentations: any[]): void {
     if (!this.augmentChartRef) return;
-    const labels = ['EN_ATTENTE', 'AVIS_MANAGER_POS', 'AVIS_MANAGER_NEG', 'APPROUVEE', 'REJETEE'];
-    const labelMap: Record<string,string> = { EN_ATTENTE: 'En attente', AVIS_MANAGER_POS: 'Avis + manager', AVIS_MANAGER_NEG: 'Avis - manager', APPROUVEE: 'Approuvée', REJETEE: 'Rejetée' };
-    const colorMap: Record<string,string> = { EN_ATTENTE: '#d69e2e', AVIS_MANAGER_POS: '#38a169', AVIS_MANAGER_NEG: '#e53e3e', APPROUVEE: '#0e9daf', REJETEE: '#e53e3e' };
+    // FIX : vrais statuts = EN_ATTENTE_MANAGER, EN_ATTENTE_RH, VALIDEE, REJETEE, ANNULEE
+    const labels = ['EN_ATTENTE_MANAGER', 'EN_ATTENTE_RH', 'VALIDEE', 'REJETEE', 'ANNULEE'];
+    const labelMap: Record<string,string> = { EN_ATTENTE_MANAGER: 'Avis manager', EN_ATTENTE_RH: 'Attente RH', VALIDEE: 'Approuvée', REJETEE: 'Rejetée', ANNULEE: 'Annulée' };
+    const colorMap: Record<string,string> = { EN_ATTENTE_MANAGER: '#d69e2e', EN_ATTENTE_RH: '#ecc94b', VALIDEE: '#0e9daf', REJETEE: '#e53e3e', ANNULEE: '#cbd5e0' };
     const counts = labels.map(l => augmentations.filter((a: any) => a.statut === l).length);
     this.charts.push(new Chart(this.augmentChartRef.nativeElement, {
       type: 'bar',

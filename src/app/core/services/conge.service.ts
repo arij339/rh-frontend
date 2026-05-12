@@ -10,7 +10,7 @@ import {
 export class CongeService {
 
   private http = inject(HttpClient);
-  private API  = 'http://localhost:8080/api';
+  private API  = '/api';
 
   // ===== EMPLOYÉ =====
   creerDemande(req: CongeRequest): Observable<DemandeConge> {

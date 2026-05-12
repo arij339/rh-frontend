@@ -22,7 +22,7 @@ export interface NotificationItem {
 export class NotificationService {
 
   private http = inject(HttpClient);
-  private API  = 'http://localhost:8080/api';
+  private API  = '/api';
 
   // Signal pour le compteur badge
   nonLuesCount = signal(0);

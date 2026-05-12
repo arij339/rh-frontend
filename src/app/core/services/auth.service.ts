@@ -32,7 +32,7 @@ export class AuthService {
 
   private http   = inject(HttpClient);
   private router = inject(Router);
-  private API    = 'http://localhost:8080/api';
+  private API    = '/api';
 
   private userSubject = new BehaviorSubject<UserProfile | null>(
     this.getUserFromStorage()

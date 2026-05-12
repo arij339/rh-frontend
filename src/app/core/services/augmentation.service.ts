@@ -12,7 +12,7 @@ import {
 export class AugmentationService {
 
   private http = inject(HttpClient);
-  private API  = 'http://localhost:8080/api';
+  private API  = '/api';
 
   // Employé
   creer(req: AugmentationRequest): Observable<AugmentationSalaire> {

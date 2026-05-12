@@ -479,7 +479,7 @@ export class ForgotPasswordComponent {
     this.errorMsg.set('');
 
     this.http.post(
-      'http://localhost:8080/api/auth/forgot-password',
+      '/api/auth/forgot-password',
       { identifiant: this.form.value.identifiant },
       { responseType: 'text' as const }
     ).subscribe({

@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, inject, OnInit, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { RouterLink } from '@angular/router';
@@ -24,9 +24,9 @@ import { forkJoin } from 'rxjs';
       </div>
     </div>
     <div class="hb-date">
-      <div class="hd-day">{{ today() | date:'d' }}</div>
+      <div class="hd-day">{{ todayDate | date:'d' }}</div>
       <div class="hd-month">
-        {{ today() | date:'MMM yyyy' | uppercase }}
+        {{ todayDate | date:'MMM yyyy' | uppercase }}
       </div>
     </div>
   </div>
@@ -36,7 +36,7 @@ import { forkJoin } from 'rxjs';
     <h2 class="section-title">Mes soldes de congés</h2>
     <div class="soldes-grid">
 
-      <div class="solde-card" *ngFor="let s of getSoldes()">
+      <div class="solde-card" *ngFor="let s of soldesComputed()">
         <div class="sc-top">
           <div class="sc-icon"
                [style.background]="s.bg"
@@ -173,23 +173,23 @@ import { forkJoin } from 'rxjs';
 
       <!-- Prochain congé -->
       <div class="upcoming-conges"
-           *ngIf="getProchainConge()">
+           *ngIf="prochaineCongeComputed()">
         <div class="uc-item">
           <div class="uc-icon">📅</div>
           <div>
             <span class="uc-label">Prochain congé</span>
             <span class="uc-val">
-              {{ getProchainConge()?.dateDebut
+              {{ prochaineCongeComputed()?.dateDebut
                  | date:'dd/MM/yyyy' }}
               →
-              {{ getProchainConge()?.dateFin
+              {{ prochaineCongeComputed()?.dateFin
                  | date:'dd/MM/yyyy' }}
             </span>
           </div>
           <span class="uc-badge"
                 [class]="getStatutClass(
-                  getProchainConge()?.statut)">
-            {{ getStatutLabel(getProchainConge()?.statut) }}
+                  prochaineCongeComputed()?.statut)">
+            {{ getStatutLabel(prochaineCongeComputed()?.statut) }}
           </span>
         </div>
       </div>
@@ -208,7 +208,7 @@ import { forkJoin } from 'rxjs';
         </div>
         <div class="requests-list">
           <div class="req-item"
-               *ngFor="let r of getRecentRequests()">
+               *ngFor="let r of recentRequestsComputed()">
             <div class="req-icon">{{ r.emoji }}</div>
             <div class="req-info">
               <span class="req-label">{{ r.label }}</span>
@@ -226,7 +226,7 @@ import { forkJoin } from 'rxjs';
             </span>
           </div>
           <div class="req-empty"
-               *ngIf="getRecentRequests().length === 0">
+               *ngIf="recentRequestsComputed().length === 0">
             Aucune demande récente
           </div>
         </div>
@@ -288,7 +288,7 @@ import { forkJoin } from 'rxjs';
       </div>
 
       <!-- Alerte solde faible -->
-      <div class="alert-card" *ngIf="hasSoldeFaible()">
+      <div class="alert-card" *ngIf="hasSoldeFaibleComputed()">
         <div class="alert-icon">⚠️</div>
         <div>
           <strong>Solde faible</strong>
@@ -588,12 +588,55 @@ import { forkJoin } from 'rxjs';
 export class EmployeDashboardComponent implements OnInit {
 
   private http = inject(HttpClient);
-  private API  = 'http://localhost:8080/api';
+  private API  = '/api';
 
   user        = signal<any>(null);
   conges      = signal<any[]>([]);
   soldes      = signal<any>(null);
   currentDate = signal(new Date());
+
+  // FIX: constante readonly — ne crée pas de nouveau Date() à chaque render
+  readonly todayDate = new Date();
+
+  // FIX: computed() — recalcul réactif uniquement quand les données changent
+  soldesComputed = computed(() => {
+    const s = this.soldes();
+    const totalA = s?.soldeCongesAnnuelTotal    ?? 21;
+    const totalM = s?.soldeCongesMaladieTotal   ?? 6;
+    const totalE = s?.soldeCongesExceptionTotal ?? 3;
+    const restA  = s?.soldeCongesAnnuelRestant    ?? totalA;
+    const restM  = s?.soldeCongesMaladieRestant   ?? totalM;
+    const restE  = s?.soldeCongesExceptionRestant ?? totalE;
+    const calcPct = (rest: number, total: number) =>
+      total > 0 ? Math.round(rest / total * 100) : 0;
+    return [
+      { label: 'Annuel',       total: totalA, restant: restA, consomme: totalA - restA, pct: calcPct(restA, totalA), bg: '#E6F1FB', color: '#185FA5' },
+      { label: 'Maladie',      total: totalM, restant: restM, consomme: totalM - restM, pct: calcPct(restM, totalM), bg: '#EAF3DE', color: '#3B6D11' },
+      { label: 'Exceptionnel', total: totalE, restant: restE, consomme: totalE - restE, pct: calcPct(restE, totalE), bg: '#FAEEDA', color: '#633806' }
+    ];
+  });
+
+  hasSoldeFaibleComputed = computed(() =>
+    this.soldesComputed().some(s => s.pct < 20)
+  );
+
+  recentRequestsComputed = computed(() =>
+    this.conges().slice(0, 5).map(c => ({
+      emoji: '📅',
+      label: `Congé ${(c.typeConge ?? 'Annuel').toLowerCase()}`,
+      date:  c.createdAt ?? c.dateDebut,
+      jours: c.nombreJours,
+      statut: c.statut
+    }))
+  );
+
+  prochaineCongeComputed = computed(() => {
+    const now = new Date();
+    return this.conges().find(c =>
+      ['VALIDEE', 'EN_ATTENTE_MANAGER', 'EN_ATTENTE_RH'].includes(c.statut) &&
+      new Date(c.dateDebut) >= now
+    ) ?? null;
+  });
 
   // ✅ Map date → label du jour férié
   feriesMap   = signal<Map<string, string>>(new Map());
@@ -653,83 +696,8 @@ export class EmployeDashboardComponent implements OnInit {
     });
   }
 
-  // ═══════════════════════════════════════════════════
-  // SOLDES — lire depuis le profil
-  // ═══════════════════════════════════════════════════
-
-  getSoldes() {
-    const s = this.soldes();
-
-    // ✅ Lire les totaux depuis le profil (configurés en admin)
-    const totalA = s?.soldeCongesAnnuelTotal    ?? 21;
-    const totalM = s?.soldeCongesMaladieTotal   ?? 6;
-    const totalE = s?.soldeCongesExceptionTotal ?? 3;
-
-    // ✅ Lire les restants calculés côté backend
-    const restA = s?.soldeCongesAnnuelRestant    ?? totalA;
-    const restM = s?.soldeCongesMaladieRestant   ?? totalM;
-    const restE = s?.soldeCongesExceptionRestant ?? totalE;
-
-    const calcPct = (rest: number, total: number) =>
-      total > 0 ? Math.round(rest / total * 100) : 0;
-
-    return [
-      {
-        label:    'Annuel',
-        total:    totalA,
-        restant:  restA,
-        consomme: totalA - restA,
-        pct:      calcPct(restA, totalA),
-        bg:       '#E6F1FB',
-        color:    '#185FA5'
-      },
-      {
-        label:    'Maladie',
-        total:    totalM,
-        restant:  restM,
-        consomme: totalM - restM,
-        pct:      calcPct(restM, totalM),
-        bg:       '#EAF3DE',
-        color:    '#3B6D11'
-      },
-      {
-        label:    'Exceptionnel',
-        total:    totalE,
-        restant:  restE,
-        consomme: totalE - restE,
-        pct:      calcPct(restE, totalE),
-        bg:       '#FAEEDA',
-        color:    '#633806'
-      }
-    ];
-  }
-
-  hasSoldeFaible(): boolean {
-    return this.getSoldes().some(s => s.pct < 20);
-  }
-
-  // ═══════════════════════════════════════════════════
-  // DEMANDES RÉCENTES
-  // ═══════════════════════════════════════════════════
-
-  getRecentRequests(): any[] {
-    return this.conges().slice(0, 5).map(c => ({
-      emoji: '📅',
-      label: `Congé ${(c.typeConge ?? 'Annuel').toLowerCase()}`,
-      date:  c.createdAt ?? c.dateDebut,
-      jours: c.nombreJours,
-      statut: c.statut
-    }));
-  }
-
-  getProchainConge(): any {
-    const now = new Date();
-    return this.conges().find(c =>
-      ['VALIDEE', 'EN_ATTENTE_MANAGER', 'EN_ATTENTE_RH']
-        .includes(c.statut) &&
-      new Date(c.dateDebut) >= now
-    ) ?? null;
-  }
+  // FIX: méthodes supprimées — remplacées par computed() signals :
+  // soldesComputed, hasSoldeFaibleComputed, recentRequestsComputed, prochaineCongeComputed
 
   // ═══════════════════════════════════════════════════
   // CALENDRIER
@@ -890,5 +858,5 @@ export class EmployeDashboardComponent implements OnInit {
     return map[s] ?? s;
   }
 
-  today(): Date { return new Date(); }
+  
 }

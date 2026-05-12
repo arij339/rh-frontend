@@ -652,7 +652,8 @@ import { catchError, of } from 'rxjs';
       animation: barGrow 0.8s cubic-bezier(0.4,0,0.2,1) both;
       &.primary { background: linear-gradient(90deg, var(--primary), var(--secondary)); }
       &.warning { background: var(--warning); }
-      &.success { background: var(--danger); }
+      &.danger  { background: var(--danger); }
+      &.success { background: var(--success); }
     }
     .cs-val { font-size: 12px; font-weight: 800; color: var(--text); min-width: 18px; text-align: right; }
     .conges-total {
@@ -776,7 +777,7 @@ import { catchError, of } from 'rxjs';
 export class RhDashboardComponent implements OnInit {
 
   private http = inject(HttpClient);
-  private API  = 'http://localhost:8080/api';
+  private API  = '/api';
 
   prenom = signal('');
   kpis   = signal<any[]>([]);
@@ -825,11 +826,15 @@ loadData(): void {
 }
 
   private buildKpis(d: any): void {
+    // FIX: le compteur "Demandes en attente" inclut les sorties des Managers
+    // (statut EN_ATTENTE_RH) mais PAS les sorties des employés —
+    // celles-ci sont validées par le Manager, pas le RH.
     const enAttente =
-      (d.conges ?? []).filter((c: any) => c.statut === 'EN_ATTENTE_RH').length +
-      (d.reclamations ?? []).filter((r: any) => r.statut === 'NOUVELLE').length +
-      (d.avances ?? []).filter((a: any) => a.statut === 'EN_ATTENTE_RH').length +
-      (d.augmentations ?? []).filter((a: any) => a.statut === 'EN_ATTENTE_RH').length;
+      (d.conges        ?? []).filter((c: any) => c.statut === 'EN_ATTENTE_RH').length +
+      (d.reclamations  ?? []).filter((r: any) => r.statut === 'NOUVELLE').length +
+      (d.avances       ?? []).filter((a: any) => a.statut === 'EN_ATTENTE_RH').length +
+      (d.augmentations ?? []).filter((a: any) => a.statut === 'EN_ATTENTE_RH').length +
+      (d.autorisations ?? []).filter((a: any) => a.statut === 'EN_ATTENTE_RH').length;
 
     const congesAuj = (d.conges ?? []).filter((c: any) => {
       if (c.statut !== 'VALIDEE') return false;
@@ -856,32 +861,45 @@ loadData(): void {
         count: (d.avances ?? []).filter((a: any) => a.statut === 'EN_ATTENTE_RH').length },
       { type: 'augmentations', label: 'Augmentations',
         count: (d.augmentations ?? []).filter((a: any) => a.statut === 'EN_ATTENTE_RH').length },
-      { type: 'autorisations', label: 'Autorisations',
-        count: (d.autorisations ?? []).filter((a: any) => a.statut === 'EN_ATTENTE').length }
+      // FIX: renommé "Sorties Managers" — seuls les Managers peuvent avoir une
+      // autorisation EN_ATTENTE_RH (quand ils soumettent une demande pour eux-mêmes).
+      // Les sorties des employés sont validées directement par le Manager, le RH ne décide pas.
+      { type: 'autorisations', label: 'Sorties Managers',
+        count: (d.autorisations ?? []).filter((a: any) => a.statut === 'EN_ATTENTE_RH').length }
     ]);
   }
 
   private buildCongesStats(conges: any[]): void {
-    const mois     = new Date().getMonth();
-    const filtered = (conges ?? []).filter(
-      (c: any) => new Date(c.dateDebut).getMonth() === mois);
+    // FIX: comparer aussi l'année (même correction que totalCongesMois)
+    const now      = new Date();
+    const filtered = (conges ?? []).filter((c: any) => {
+      const d = new Date(c.dateDebut);
+      return d.getMonth()    === now.getMonth()
+          && d.getFullYear() === now.getFullYear();
+    });
     const get = (s: string) => filtered.filter((c: any) => c.statut === s).length;
     const max = Math.max(get('VALIDEE'), get('EN_ATTENTE_RH'), get('REJETEE'), 1);
 
     this.congesStats.set([
-      { label: 'Validés',   count: get('VALIDEE'),      color: 'primary',
-        pct: Math.round(get('VALIDEE')      / max * 100) },
-      { label: 'En attente',count: get('EN_ATTENTE_RH'), color: 'warning',
-        pct: Math.round(get('EN_ATTENTE_RH')/ max * 100) },
-      { label: 'Refusés',   count: get('REJETEE'),      color: 'success',
-        pct: Math.round(get('REJETEE')      / max * 100) }
+      { label: 'Validés',    count: get('VALIDEE'),       color: 'primary',
+        pct: Math.round(get('VALIDEE')       / max * 100) },
+      { label: 'En attente', count: get('EN_ATTENTE_RH'), color: 'warning',
+        pct: Math.round(get('EN_ATTENTE_RH') / max * 100) },
+      // FIX: couleur 'danger' (rouge) pour les refusés, pas 'success' (vert)
+      { label: 'Refusés',    count: get('REJETEE'),       color: 'danger',
+        pct: Math.round(get('REJETEE')       / max * 100) }
     ]);
   }
 
   totalCongesMois(): number {
-    const mois = new Date().getMonth();
-    return (this.congesMois() ?? []).filter(
-      (c: any) => new Date(c.dateDebut).getMonth() === mois).length;
+    // FIX: comparer aussi l'année pour éviter le bug en janvier
+    // (getMonth() seul inclurait les congés de janvier N-1)
+    const now = new Date();
+    return (this.congesMois() ?? []).filter((c: any) => {
+      const d = new Date(c.dateDebut);
+      return d.getMonth()    === now.getMonth()
+          && d.getFullYear() === now.getFullYear();
+    }).length;
   }
 
   totalEnAttente(): number {
@@ -897,7 +915,10 @@ loadData(): void {
 
   getStatutClass(s: string): string {
     const map: Record<string, string> = {
-      NOUVELLE: 'nouvelle', EN_COURS: 'en_cours', RESOLUE: 'resolue'
+      NOUVELLE: 'nouvelle', EN_COURS: 'en_cours',
+      RESOLUE: 'resolue',
+      // FIX: CLOTUREE n'était pas mappé → tombait dans 'nouvelle' (bleu trompeur)
+      CLOTUREE: 'resolue'
     };
     return map[s?.toUpperCase()] ?? 'nouvelle';
   }

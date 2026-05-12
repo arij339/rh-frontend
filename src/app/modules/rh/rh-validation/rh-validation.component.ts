@@ -733,7 +733,7 @@ const IC = {
 export class RhValidationComponent implements OnInit {
 
   private http = inject(HttpClient);
-  private API  = 'http://localhost:8080/api';
+  private API  = '/api';
 
   ic = IC;
 

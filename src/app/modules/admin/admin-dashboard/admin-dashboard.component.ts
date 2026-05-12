@@ -482,7 +482,7 @@ import { forkJoin } from 'rxjs';
 export class AdminDashboardComponent implements OnInit {
 
   private http = inject(HttpClient);
-  private API  = 'http://localhost:8080/api';
+  private API  = '/api';
 
   users    = signal<any[]>([]);
   employes = signal<any[]>([]);

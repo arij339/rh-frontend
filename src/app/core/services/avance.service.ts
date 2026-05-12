@@ -11,7 +11,7 @@ import {
 export class AvanceService {
 
   private http = inject(HttpClient);
-  private API  = 'http://localhost:8080/api';
+  private API  = '/api';
 
   // ===== EMPLOYÉ =====
   simuler(req: SimulationRequest): Observable<SimulationResponse> {

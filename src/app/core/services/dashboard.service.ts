@@ -6,7 +6,7 @@ import { Observable } from 'rxjs';
 export class DashboardService {
 
   private http = inject(HttpClient);
-  private API  = 'http://localhost:8080/api';
+  private API  = '/api';
 
   // Soldes congés
   getSoldesConges(): Observable<any[]> {

@@ -31,7 +31,7 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
         const refreshToken = localStorage.getItem('refreshToken');
         if (refreshToken) {
           return http.post<any>(
-            'http://localhost:8080/api/auth/refresh-token', {},
+            '/api/auth/refresh-token', {},
             { headers: { Authorization: `Bearer ${refreshToken}` } }
           ).pipe(
             switchMap(response => {

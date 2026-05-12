@@ -496,7 +496,7 @@ type Tab = 'CONGES' | 'JOURS_FERIES';
 export class AdminConfigComponent implements OnInit {
 
   private http = inject(HttpClient);
-  private readonly API = 'http://localhost:8080/api';
+  private readonly API = '/api';
 
   ic = ICONS;
 

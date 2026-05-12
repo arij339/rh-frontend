@@ -933,7 +933,7 @@ export class ProfilComponent implements OnInit {
 
   private buildPhotoUrl(photoUrl: string): string {
     if (photoUrl.startsWith('http')) return photoUrl;
-    return 'http://localhost:8080' + photoUrl;
+    return '' + photoUrl;
   }
 
   // ── Helpers ──────────────────────────────────────────────────────────────────

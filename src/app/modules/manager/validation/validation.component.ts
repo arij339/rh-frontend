@@ -783,7 +783,7 @@ type TypeDemande = 'conges' | 'autorisations' | 'augmentations';
 export class ValidationComponent implements OnInit {
 
   private http = inject(HttpClient);
-  private API  = 'http://localhost:8080/api';
+  private API  = '/api';
 
   conges        = signal<any[]>([]);
   autorisations = signal<any[]>([]);

@@ -63,8 +63,8 @@ const IC = {
     </div>
   </ng-container>
 
-  <!-- ===== LOADING ===== -->
-  <div class="loading-grid" *ngIf="loading()">
+  <!-- ===== LOADING — uniquement pour MANAGER qui charge ses données ===== -->
+  <div class="loading-grid" *ngIf="loading() && role === 'MANAGER'">
     <div class="skeleton-card" *ngFor="let i of [1,2,3,4]"></div>
   </div>
 
@@ -516,8 +516,10 @@ export class DashboardComponent implements OnInit {
   }
 
   getSoldePercent(s: any): number {
-    if (!s?.joursAcquis) return 0;
-    return Math.round((s.joursConsommes / s.joursAcquis) * 100);
+    const acquis    = s?.joursAcquis    ?? 0;
+    const consommes = s?.joursConsommes ?? 0; // FIX: null → 0, évite NaN
+    if (acquis <= 0) return 0;
+    return Math.min(100, Math.round((consommes / acquis) * 100)); // FIX: plafonné à 100
   }
 
   getSoldeColor(s: any): string {

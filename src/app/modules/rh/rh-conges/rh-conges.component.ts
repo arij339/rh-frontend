@@ -213,11 +213,13 @@ import { forkJoin } from 'rxjs';
             <polyline points="6 9 12 15 18 9"/>
           </svg>
           <select [(ngModel)]="statutFilter" (change)="applyFilter()">
-            <option value="">Tous les statuts</option>
+            <option value="">Tous les statuts (sauf annulés)</option>
             <option value="EN_ATTENTE_MANAGER">Att. Manager</option>
             <option value="EN_ATTENTE_RH">Att. RH</option>
             <option value="VALIDEE">Validé</option>
             <option value="REJETEE">Refusé</option>
+            <!-- FIX: option ajoutée pour consulter les annulés si besoin -->
+            <option value="ANNULEE">Annulé par employé</option>
           </select>
         </div>
 
@@ -1223,6 +1225,8 @@ import { forkJoin } from 'rxjs';
       &.att-rh  { background: var(--warning-bg); color: var(--warning); .sb-dot { background: var(--warning); } }
       &.valide  { background: var(--success-bg); color: var(--success); .sb-dot { background: var(--success); } }
       &.rejete  { background: var(--danger-bg);  color: var(--danger);  .sb-dot { background: var(--danger); } }
+      /* FIX: style pour les congés annulés par l'employé */
+      &.annulee { background: var(--gray-light);  color: var(--text-light); .sb-dot { background: var(--text-light); } }
     }
     .act-row { display: flex; gap: 6px; align-items: center; }
     .act-btn {
@@ -1667,7 +1671,7 @@ import { forkJoin } from 'rxjs';
 export class RhCongesComponent implements OnInit {
 
   private http = inject(HttpClient);
-  private API  = 'http://localhost:8080/api';
+  private API  = '/api';
 
   conges   = signal<any[]>([]);
   employes = signal<any[]>([]);
@@ -1795,6 +1799,10 @@ export class RhCongesComponent implements OnInit {
 
   filteredConges(): any[] {
     return this.conges().filter(c => {
+      // FIX: exclure les congés ANNULEE par défaut (annulés par l'employé lui-même)
+      // Le RH n'a rien à faire dessus — sauf s'il filtre explicitement sur ANNULEE
+      if (!this.statutFilter && c.statut === 'ANNULEE') return false;
+
       const t  = this.search.toLowerCase();
       const m  = !t || (c.employeNom ?? '').toLowerCase().includes(t) || (c.employePrenom ?? '').toLowerCase().includes(t);
       const s  = !this.statutFilter || c.statut    === this.statutFilter;
@@ -1999,7 +2007,8 @@ export class RhCongesComponent implements OnInit {
     this.selectedCongeId.set(congeId);
     this.historique.set([]);
     this.loadingHist.set(true);
-    this.http.get<any[]>(`${this.API}/rh/conges/conges/${congeId}/historique`)
+    // FIX: URL corrigée — /rh/conges/{id}/historique (sans doublon /conges/conges)
+    this.http.get<any[]>(`${this.API}/rh/conges/${congeId}/historique`)
       .subscribe({
         next: (d) => {
           this.historique.set(d ?? []);
@@ -2095,7 +2104,8 @@ export class RhCongesComponent implements OnInit {
       EN_ATTENTE_MANAGER: 'att-mgr',
       EN_ATTENTE_RH:      'att-rh',
       VALIDEE:            'valide',
-      REJETEE:            'rejete'
+      REJETEE:            'rejete',
+      ANNULEE:            'annulee' // FIX: badge pour les annulés si affichés via filtre
     };
     return map[s] ?? 'att-rh';
   }
@@ -2105,7 +2115,8 @@ export class RhCongesComponent implements OnInit {
       EN_ATTENTE_MANAGER: 'Att. Manager',
       EN_ATTENTE_RH:      'Att. RH',
       VALIDEE:            'Validé',
-      REJETEE:            'Refusé'
+      REJETEE:            'Refusé',
+      ANNULEE:            'Annulé' // FIX
     };
     return map[s] ?? s;
   }
