@@ -1,3 +1,4 @@
+import { environment } from '../../../environments/environment';
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { forkJoin, Observable, of } from 'rxjs';
@@ -7,7 +8,7 @@ import { catchError } from 'rxjs/operators';
 export class AnalyticsService {
 
   private http = inject(HttpClient);
-  private API  = '/api';
+  private API = environment.apiUrl + '/api';
 
   /** Charge tout en parallèle — analytics global RH */
   getAnalyticsRH(): Observable<any> {
@@ -49,3 +50,4 @@ export class AnalyticsService {
     return this.http.get<any[]>(`${this.API}/rh/conges/soldes/${employeId}`).pipe(catchError(() => of([])));
   }
 }
+

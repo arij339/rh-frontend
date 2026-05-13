@@ -1,3 +1,4 @@
+import { environment } from '../../../environments/environment';
 import { Component, inject, OnInit, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
@@ -588,7 +589,7 @@ import { forkJoin } from 'rxjs';
 export class EmployeDashboardComponent implements OnInit {
 
   private http = inject(HttpClient);
-  private API  = '/api';
+  private API = environment.apiUrl + '/api';
 
   user        = signal<any>(null);
   conges      = signal<any[]>([]);
@@ -860,3 +861,4 @@ export class EmployeDashboardComponent implements OnInit {
 
   
 }
+

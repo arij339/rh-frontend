@@ -1,3 +1,4 @@
+import { environment } from '../../../../environments/environment';
 // src/app/modules/rh/rh-conges/rh-conges.component.ts
 
 import {
@@ -1671,7 +1672,7 @@ import { forkJoin } from 'rxjs';
 export class RhCongesComponent implements OnInit {
 
   private http = inject(HttpClient);
-  private API  = '/api';
+  private API = environment.apiUrl + '/api';
 
   conges   = signal<any[]>([]);
   employes = signal<any[]>([]);
@@ -2134,3 +2135,4 @@ export class RhCongesComponent implements OnInit {
     this.detailConge.set(c);
   }
 }
+

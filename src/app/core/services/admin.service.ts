@@ -1,3 +1,4 @@
+import { environment } from '../../../environments/environment';
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, forkJoin } from 'rxjs';
@@ -6,7 +7,7 @@ import { Observable, forkJoin } from 'rxjs';
 export class AdminService {
 
   private http = inject(HttpClient);
-  private API  = '/api';
+  private API = environment.apiUrl + '/api';
 
   // ===== USERS =====
   getAllUsers(): Observable<any[]> {
@@ -78,3 +79,4 @@ export class AdminService {
     });
   }
 }
+

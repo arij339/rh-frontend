@@ -1,3 +1,4 @@
+import { environment } from '../../../../environments/environment';
 // src/app/modules/rh/rh-reclamations/rh-reclamations.component.ts
 
 import {
@@ -1187,7 +1188,7 @@ import { HttpClient } from '@angular/common/http';
 export class RhReclamationsComponent implements OnInit {
 
   private http = inject(HttpClient);
-  private API  = '/api';
+  private API = environment.apiUrl + '/api';
 
   reclamations   = signal<any[]>([]);
   detailOpen     = signal(false);
@@ -1372,3 +1373,5 @@ export class RhReclamationsComponent implements OnInit {
     );
   }
 }
+
+

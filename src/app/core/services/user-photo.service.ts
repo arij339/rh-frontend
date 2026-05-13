@@ -1,3 +1,4 @@
+import { environment } from '../../../environments/environment';
 // =========================================================
 // NOUVEAU FICHIER
 // src/app/core/services/user-photo.service.ts
@@ -17,7 +18,7 @@ import { inject } from '@angular/core';
 export class UserPhotoService {
 
   private http = inject(HttpClient);
-  private API  = '/api';
+  private API = environment.apiUrl + '/api';
 
   /** Signal global : URL de la photo ou null */
   photoUrl = signal<string | null>(null);
@@ -46,3 +47,5 @@ export class UserPhotoService {
     this.photoUrl.set(null);
   }
 }
+
+

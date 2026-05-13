@@ -1,3 +1,4 @@
+import { environment } from '../../../environments/environment';
 // src/app/modules/dashboard/rh-dashboard.component.ts
 
 import {
@@ -777,7 +778,7 @@ import { catchError, of } from 'rxjs';
 export class RhDashboardComponent implements OnInit {
 
   private http = inject(HttpClient);
-  private API  = '/api';
+  private API = environment.apiUrl + '/api';
 
   prenom = signal('');
   kpis   = signal<any[]>([]);
@@ -925,3 +926,4 @@ loadData(): void {
 
   today(): Date { return new Date(); }
 }
+

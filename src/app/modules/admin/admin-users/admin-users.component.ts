@@ -1,3 +1,4 @@
+import { environment } from '../../../../environments/environment';
 import {
   Component, inject, OnInit, signal
 } from '@angular/core';
@@ -1410,7 +1411,7 @@ export class AdminUsersComponent implements OnInit {
 
   private http = inject(HttpClient);
   private fb   = inject(FormBuilder);
-  private API  = '/api';
+  private API = environment.apiUrl + '/api';
 
   svg = SVG;
 
@@ -1887,3 +1888,5 @@ export class AdminUsersComponent implements OnInit {
     });
   }
 }
+
+

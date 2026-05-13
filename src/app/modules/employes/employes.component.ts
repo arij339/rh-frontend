@@ -1,3 +1,4 @@
+import { environment } from '../../../environments/environment';
 import {
   Component, inject, OnInit, signal
 } from '@angular/core';
@@ -792,7 +793,7 @@ export class EmployesComponent implements OnInit {
   private http  = inject(HttpClient);
   private auth  = inject(AuthService);
   private fb    = inject(FormBuilder);
-  private API   = '/api';
+  private API = environment.apiUrl + '/api';
 
   ic = IC;
 
@@ -1008,3 +1009,5 @@ export class EmployesComponent implements OnInit {
     setTimeout(() => this.toast.set({ show: false, message: '', type: 'success' }), 3000);
   }
 }
+
+

@@ -1,3 +1,4 @@
+import { environment } from '../../../environments/environment';
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
@@ -12,7 +13,7 @@ import {
 export class AutorisationService {
 
   private http = inject(HttpClient);
-  private API  = '/api';
+  private API = environment.apiUrl + '/api';
 
   // ===== EMPLOYÉ =====
   creerDemande(req: AutorisationRequest): Observable<AutorisationSortie> {
@@ -84,3 +85,5 @@ export class AutorisationService {
       `${this.API}/rh/sorties/rapport?annee=${annee}&mois=${mois}`);
   }
 }
+
+

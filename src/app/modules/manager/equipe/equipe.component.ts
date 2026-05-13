@@ -1,3 +1,4 @@
+import { environment } from '../../../../environments/environment';
 // src/app/modules/manager/equipe/equipe.component.ts
 
 import {
@@ -934,7 +935,7 @@ export class EquipeComponent implements OnInit {
 
   private http = inject(HttpClient);
   private auth = inject(AuthService);
-  private API  = '/api';
+  private API = environment.apiUrl + '/api';
 
   equipe    = signal<any[]>([]);
   conges    = signal<any[]>([]);
@@ -1034,3 +1035,5 @@ export class EquipeComponent implements OnInit {
     return `${years} an${years > 1 ? 's' : ''}${rem > 0 ? ` ${rem} mois` : ''}`;
   }
 }
+
+

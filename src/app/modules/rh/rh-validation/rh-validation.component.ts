@@ -1,3 +1,4 @@
+import { environment } from '../../../../environments/environment';
 // src/app/modules/rh/rh-validation/rh-validation.component.ts
 
 import {
@@ -733,7 +734,7 @@ const IC = {
 export class RhValidationComponent implements OnInit {
 
   private http = inject(HttpClient);
-  private API  = '/api';
+  private API = environment.apiUrl + '/api';
 
   ic = IC;
 
@@ -852,3 +853,5 @@ export class RhValidationComponent implements OnInit {
     setTimeout(() => this.toast.set({ show: false, message: '', type: 'success' }), 3000);
   }
 }
+
+

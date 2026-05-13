@@ -1,3 +1,4 @@
+import { environment } from '../../../environments/environment';
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
@@ -12,7 +13,7 @@ import {
 export class AugmentationService {
 
   private http = inject(HttpClient);
-  private API  = '/api';
+  private API = environment.apiUrl + '/api';
 
   // Employé
   creer(req: AugmentationRequest): Observable<AugmentationSalaire> {
@@ -73,3 +74,5 @@ export class AugmentationService {
       `${this.API}/rh/augmentations/statistiques`);
   }
 }
+
+

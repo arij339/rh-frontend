@@ -1,3 +1,4 @@
+import { environment } from '../../../environments/environment';
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
@@ -32,7 +33,7 @@ export class AuthService {
 
   private http   = inject(HttpClient);
   private router = inject(Router);
-  private API    = '/api';
+  private API = environment.apiUrl + '/api';
 
   private userSubject = new BehaviorSubject<UserProfile | null>(
     this.getUserFromStorage()
@@ -126,3 +127,5 @@ export class AuthService {
     return user ? JSON.parse(user) : null;
   }
 }
+
+

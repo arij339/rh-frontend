@@ -1,3 +1,4 @@
+import { environment } from '../../../../environments/environment';
 import { Component, inject, OnInit, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -482,7 +483,7 @@ import { forkJoin } from 'rxjs';
 export class AdminDashboardComponent implements OnInit {
 
   private http = inject(HttpClient);
-  private API  = '/api';
+  private API = environment.apiUrl + '/api';
 
   users    = signal<any[]>([]);
   employes = signal<any[]>([]);
@@ -620,3 +621,5 @@ export class AdminDashboardComponent implements OnInit {
 
   today(): Date { return new Date(); }
 }
+
+

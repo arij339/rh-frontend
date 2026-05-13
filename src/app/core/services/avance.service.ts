@@ -1,3 +1,4 @@
+import { environment } from '../../../environments/environment';
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
@@ -11,7 +12,7 @@ import {
 export class AvanceService {
 
   private http = inject(HttpClient);
-  private API  = '/api';
+  private API = environment.apiUrl + '/api';
 
   // ===== EMPLOYÉ =====
   simuler(req: SimulationRequest): Observable<SimulationResponse> {
@@ -71,3 +72,5 @@ export class AvanceService {
       `${this.API}/rh/avances/statistiques`);
   }
 }
+
+

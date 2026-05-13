@@ -1,3 +1,4 @@
+import { environment } from '../../../environments/environment';
 import { Injectable, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, interval } from 'rxjs';
@@ -22,7 +23,7 @@ export interface NotificationItem {
 export class NotificationService {
 
   private http = inject(HttpClient);
-  private API  = '/api';
+  private API = environment.apiUrl + '/api';
 
   // Signal pour le compteur badge
   nonLuesCount = signal(0);
@@ -61,3 +62,5 @@ export class NotificationService {
     });
   }
 }
+
+

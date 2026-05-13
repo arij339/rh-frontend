@@ -1,3 +1,4 @@
+import { environment } from '../../../../environments/environment';
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule }     from '@angular/common';
 import { FormsModule }      from '@angular/forms';
@@ -567,7 +568,7 @@ export class RhAvancesComponent implements OnInit {
 
   private avanceService = inject(AvanceService);
   private http          = inject(HttpClient);
-  private API           = '/api';
+  private API = environment.apiUrl + '/api';
 
   ic = IC;
 
@@ -772,3 +773,5 @@ export class RhAvancesComponent implements OnInit {
     setTimeout(() => this.toast.set({ show: false, message: '', type: 'success' }), 4000);
   }
 }
+
+

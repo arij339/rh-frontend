@@ -1,3 +1,4 @@
+import { environment } from '../../../environments/environment';
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
@@ -10,7 +11,7 @@ import {
 export class CongeService {
 
   private http = inject(HttpClient);
-  private API  = '/api';
+  private API = environment.apiUrl + '/api';
 
   // ===== EMPLOYÉ =====
   creerDemande(req: CongeRequest): Observable<DemandeConge> {
@@ -99,3 +100,5 @@ export class CongeService {
       { params });
   }
 }
+
+

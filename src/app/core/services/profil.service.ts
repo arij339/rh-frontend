@@ -1,3 +1,4 @@
+import { environment } from '../../../environments/environment';
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
@@ -9,11 +10,11 @@ import {
 export class ProfilService {
 
   private http = inject(HttpClient);
-  private API  = '/api';
+  private API = environment.apiUrl + '/api';
 
   // Mon profil
   getMonProfil(): Observable<ProfilEmploye> {
-  return this.http.get<ProfilEmploye>(`${this.API}/employe/profil/complet`); // ← /complet
+  return this.http.get<ProfilEmploye>(`${this.API}/employe/profil/complet`); 
 }
 
   updateMonProfil(
@@ -92,3 +93,4 @@ export class ProfilService {
     return this.http.delete<void>(`${this.API}/employe/photo`);
   }
 }
+

@@ -1,3 +1,4 @@
+import { environment } from '../../../../environments/environment';
 // src/app/modules/manager/validation/validation.component.ts
 
 import {
@@ -783,7 +784,7 @@ type TypeDemande = 'conges' | 'autorisations' | 'augmentations';
 export class ValidationComponent implements OnInit {
 
   private http = inject(HttpClient);
-  private API  = '/api';
+  private API = environment.apiUrl + '/api';
 
   conges        = signal<any[]>([]);
   autorisations = signal<any[]>([]);
@@ -896,3 +897,5 @@ export class ValidationComponent implements OnInit {
     setTimeout(() => this.toast.set({ show: false, message: '', type: 'success' }), 3200);
   }
 }
+
+
