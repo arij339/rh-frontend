@@ -1,6 +1,6 @@
 import { environment } from '../../../environments/environment';
 import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import {
   CongeRequest, DemandeConge,
@@ -38,12 +38,21 @@ export class CongeService {
     return this.http.put<DemandeConge>(
       `${this.API}/employe/conges/${id}/annuler`, {});
   }
-   // ─── Pièce justificative ──────────────────────────────────────────
+  // ─── Pièce justificative ──────────────────────────────────────────
   uploadJustificatif(id: number, file: File): Observable<{ justificatifUrl: string }> {
     const formData = new FormData();
     formData.append('file', file);
+    // On récupère le token fraîchement depuis localStorage à chaque upload
+    // pour éviter un 401 si l'intercepteur ne peut pas re-cloner le FormData
+    const token = localStorage.getItem('accessToken');
+    const headers = new HttpHeaders(
+      token ? { Authorization: `Bearer ${token}` } : {}
+    );
     return this.http.post<{ justificatifUrl: string }>(
-      `${this.API}/employe/conges/${id}/justificatif`, formData);
+      `${this.API}/employe/conges/${id}/justificatif`,
+      formData,
+      { headers }
+    );
   }
  
   deleteJustificatif(id: number): Observable<void> {
@@ -100,5 +109,3 @@ export class CongeService {
       { params });
   }
 }
-
-
