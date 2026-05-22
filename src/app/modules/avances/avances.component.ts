@@ -7,8 +7,8 @@ import {
   Validators, FormsModule
 } from '@angular/forms';
 import { forkJoin } from 'rxjs';
-import { AvanceService }  from '../../core/services/avance.service';
-import { AuthService }    from '../../core/services/auth.service';
+import { AvanceService } from '../../core/services/avance.service';
+import { AuthService } from '../../core/services/auth.service';
 import {
   AvanceSalaire, SimulationResponse
 } from '../../core/models/avance.model';
@@ -18,43 +18,43 @@ type Tab = 'mes-avances' | 'simuler' | 'nouvelle' | 'en-attente' | 'toutes';
 
 // ─── SVG Icons ────────────────────────────────────────────────────────────────
 const IC = {
-  banknote:    `<svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/></svg>`,
-  list:        `<svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>`,
-  calculator:  `<svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="10" x2="10" y2="10"/><line x1="12" y1="10" x2="14" y2="10"/><line x1="16" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="10" y2="14"/><line x1="12" y1="14" x2="14" y2="14"/><line x1="16" y1="14" x2="16" y2="18"/><line x1="8" y1="18" x2="14" y2="18"/></svg>`,
-  plus:        `<svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`,
-  clock:       `<svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`,
-  folder:      `<svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>`,
-  check:       `<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>`,
+  banknote: `<svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/></svg>`,
+  list: `<svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>`,
+  calculator: `<svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="10" x2="10" y2="10"/><line x1="12" y1="10" x2="14" y2="10"/><line x1="16" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="10" y2="14"/><line x1="12" y1="14" x2="14" y2="14"/><line x1="16" y1="14" x2="16" y2="18"/><line x1="8" y1="18" x2="14" y2="18"/></svg>`,
+  plus: `<svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`,
+  clock: `<svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`,
+  folder: `<svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>`,
+  check: `<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>`,
   checkCircle: `<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>`,
-  x:           `<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`,
-  xCircle:     `<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>`,
-  ban:         `<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>`,
-  send:        `<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>`,
-  note:        `<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`,
-  close:       `<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`,
-  msgCircle:   `<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`,
-  user:        `<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`,
-  building:    `<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>`,
-  calendar:    `<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>`,
-  barChart:    `<svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/><line x1="2" y1="20" x2="22" y2="20"/></svg>`,
-  creditCard:  `<svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>`,
-  arrowRight:  `<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>`,
+  x: `<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`,
+  xCircle: `<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>`,
+  ban: `<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>`,
+  send: `<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>`,
+  note: `<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`,
+  close: `<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`,
+  msgCircle: `<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`,
+  user: `<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`,
+  building: `<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>`,
+  calendar: `<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>`,
+  barChart: `<svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/><line x1="2" y1="20" x2="22" y2="20"/></svg>`,
+  creditCard: `<svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>`,
+  arrowRight: `<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>`,
   alertCircle: `<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`,
-  percent:     `<svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><line x1="19" y1="5" x2="5" y2="19"/><circle cx="6.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/></svg>`,
-  search:      `<svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>`,
-  thumbUp:     `<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z"/><path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg>`,
-  thumbDown:   `<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3H10z"/><path d="M17 2h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17"/></svg>`,
-  refresh:     `<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.95"/></svg>`,
-  toastOk:     `<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>`,
-  toastErr:    `<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>`,
-  toastInfo:   `<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`,
+  percent: `<svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><line x1="19" y1="5" x2="5" y2="19"/><circle cx="6.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/></svg>`,
+  search: `<svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>`,
+  thumbUp: `<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z"/><path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg>`,
+  thumbDown: `<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3H10z"/><path d="M17 2h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17"/></svg>`,
+  refresh: `<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.95"/></svg>`,
+  toastOk: `<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>`,
+  toastErr: `<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>`,
+  toastInfo: `<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`,
   // Rules icons
   rulePercent: `<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><line x1="19" y1="5" x2="5" y2="19"/><circle cx="6.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/></svg>`,
-  ruleStack:   `<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>`,
-  ruleDelay:   `<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`,
-  ruleBadge:   `<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11"/></svg>`,
-  expand:      `<svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>`,
-  collapse:    `<svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><polyline points="18 15 12 9 6 15"/></svg>`,
+  ruleStack: `<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>`,
+  ruleDelay: `<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`,
+  ruleBadge: `<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11"/></svg>`,
+  expand: `<svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>`,
+  collapse: `<svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><polyline points="18 15 12 9 6 15"/></svg>`,
 };
 
 @Component({
@@ -185,6 +185,41 @@ const IC = {
           </div>
         </div>
 
+        <!-- ══ ALERTE MODIFICATION RH ══ -->
+        <div class="modification-alert" *ngIf="a.statut === 'MODIFIEE_PAR_RH'">
+          <div class="modif-header">
+            <span class="modif-icon"><span [innerHTML]="ic.alertCircle | safeHtml"></span></span>
+            <strong>Le service RH a modifié votre demande</strong>
+          </div>
+          <div class="modif-details">
+            <div class="modif-row">
+              <span>Montant initial :</span>
+              <strong>{{ a.montantDemande | number:'1.3-3' }} DT</strong>
+            </div>
+            <div class="modif-row">
+              <span>Montant accordé :</span>
+              <strong class="teal">{{ a.montantAccorde | number:'1.3-3' }} DT</strong>
+            </div>
+            <div class="modif-row">
+              <span>Mensualités :</span>
+              <strong>{{ a.nombreMensualites }} mois</strong>
+            </div>
+            <div class="modif-row">
+              <span>Mensualité :</span>
+              <strong class="teal">{{ a.mensualite | number:'1.3-3' }} DT/mois</strong>
+            </div>
+          </div>
+          <p class="modif-msg">Veuillez confirmer ou refuser ces nouvelles conditions.</p>
+          <div class="modif-actions">
+            <button class="btn btn-danger" (click)="refuserModification(a.id)" [disabled]="actionLoading()">
+              <span [innerHTML]="ic.x | safeHtml"></span> Refuser
+            </button>
+            <button class="btn btn-primary" (click)="confirmerModification(a.id)" [disabled]="actionLoading()">
+              <span [innerHTML]="ic.check | safeHtml"></span> Accepter les conditions
+            </button>
+          </div>
+        </div>
+
         <!-- Commentaires -->
         <div class="ac-comments" *ngIf="a.commentaireRH">
           <div class="ac-comment" *ngIf="a.commentaireRH">
@@ -292,7 +327,7 @@ const IC = {
             <span [innerHTML]="(simulation()!.eligible ? ic.checkCircle : ic.xCircle) | safeHtml"></span>
           </div>
           <div class="elig-body">
-            <strong>{{ simulation()!.eligible ? 'Vous êtes éligible' : 'Vous n\'êtes pas éligible' }}</strong>
+            <strong>{{ simulation()!.eligible ? "Vous êtes éligible" : "Vous n'êtes pas éligible" }}</strong>
             <span *ngIf="!simulation()!.eligible">{{ simulation()!.raisonIneligibilite }}</span>
           </div>
         </div>
@@ -698,6 +733,7 @@ const IC = {
     .statut-annulee         .ac-accent { background: var(--c-gray-200); }
     .statut-attente-manager .ac-accent { background: var(--c-amber); }
     .statut-attente-rh      .ac-accent { background: var(--c-amber); }
+    .statut-modifiee        .ac-accent { background: var(--c-purple); }
 
     /* ── Header ── */
     .ac-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 16px; flex-wrap: wrap; gap: 10px; }
@@ -753,6 +789,15 @@ const IC = {
     .echeancier-table { overflow-x: auto; border-radius: var(--r); border: 1px solid var(--c-gray-200); table { width: 100%; border-collapse: collapse; thead tr { background: var(--c-teal-lt); th { padding: 10px 14px; text-align: left; font-size: 11px; font-weight: 700; color: var(--c-teal); } } tbody tr { border-bottom: 1px solid var(--c-gray-200); &:hover { background: var(--c-gray-100); } &.paye { opacity: 0.7; } &.prochain { background: var(--c-amber-lt); font-weight: 600; } td { padding: 10px 14px; font-size: 13px; } } } }
 
     .ac-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--c-gray-200); }
+
+    /* ── Modification alert ── */
+    .modification-alert { background: linear-gradient(135deg, #FFF5F0 0%, #FFFBF5 100%); border: 1.5px solid #F6AD55; border-radius: var(--r); padding: 18px 20px; margin-bottom: 14px; animation: fadeUp 0.3s ease; }
+    .modif-header { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; strong { font-size: 14px; color: #C05621; } }
+    .modif-icon { display: flex; align-items: center; color: #DD6B20; svg { display: block; } }
+    .modif-details { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; background: white; border-radius: 8px; padding: 12px 14px; margin-bottom: 10px; border: 1px solid var(--c-gray-200); }
+    .modif-row { display: flex; justify-content: space-between; font-size: 13px; span { color: var(--c-muted); } strong { color: var(--c-text); &.teal { color: var(--c-teal); } } }
+    .modif-msg { font-size: 12px; color: #C05621; font-weight: 600; margin: 8px 0 12px; }
+    .modif-actions { display: flex; gap: 10px; justify-content: flex-end; }
 
     /* ── Simuler layout ── */
     .simuler-layout { display: grid; grid-template-columns: 380px 1fr; gap: 24px; align-items: start; }
@@ -868,6 +913,7 @@ const IC = {
     .badge-warning { background: var(--c-amber-lt); color: var(--c-amber); }
     .badge-info    { background: var(--c-teal-lt);  color: var(--c-teal); }
     .badge-gray    { background: var(--c-gray-200); color: var(--c-muted); }
+    .badge-purple  { background: var(--c-purple-lt); color: var(--c-purple); }
 
     /* ── Modal ── */
     .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 20px; backdrop-filter: blur(2px); }
@@ -906,63 +952,64 @@ const IC = {
 export class AvancesComponent implements OnInit {
 
   private avanceService = inject(AvanceService);
-  private authService   = inject(AuthService);
-  private fb            = inject(FormBuilder);
+  private authService = inject(AuthService);
+  private fb = inject(FormBuilder);
 
   role = this.authService.getRole();
-  ic   = IC;
+  ic = IC;
 
-  activeTab         = signal<Tab>('mes-avances');
-  loading           = signal(true);
-  actionLoading     = signal(false);
-  submitLoading     = signal(false);
-  simLoading        = signal(false);
+  activeTab = signal<Tab>('mes-avances');
+  loading = signal(true);
+  actionLoading = signal(false);
+  submitLoading = signal(false);
+  simLoading = signal(false);
   validationLoading = signal(false);
-  rembLoading       = signal(false);
+  rembLoading = signal(false);
 
-  mesAvances    = signal<AvanceSalaire[]>([]);
-  enAttente     = signal<AvanceSalaire[]>([]);
+  mesAvances = signal<AvanceSalaire[]>([]);
+  enAttente = signal<AvanceSalaire[]>([]);
   toutesAvances = signal<AvanceSalaire[]>([]);
-  statsRH       = signal<Record<string, number>>({});
-  simulation    = signal<SimulationResponse | null>(null);
+  statsRH = signal<Record<string, number>>({});
+  simulation = signal<SimulationResponse | null>(null);
 
-  filterStatut   = signal('');
-  rhSearch       = signal('');
+  filterStatut = signal('');
+  rhSearch = signal('');
   rhFilterStatut = signal('');
 
-  validatingId          = signal<number | null>(null);
+  validatingId = signal<number | null>(null);
   validationCommentaire = '';
-  rhMontantAccorde:     number | null = null;
-  rhMensualites         = 3;
-  rhDateVersement       = '';
+  rhMontantAccorde: number | null = null;
+  rhMensualites = 3;
+  rhDateVersement = '';
 
-  showEcheancier   = signal<number | null>(null);
+  showEcheancier = signal<number | null>(null);
   avanceEcheancier = signal<AvanceSalaire | null>(null);
 
-  formError   = signal('');
+  formError = signal('');
   formSuccess = signal('');
 
-  toast = signal<{show:boolean; message:string; type:string}>({ show: false, message: '', type: 'success' });
+  toast = signal<{ show: boolean; message: string; type: string }>({ show: false, message: '', type: 'success' });
 
   get minDate(): string { return new Date().toISOString().split('T')[0]; }
 
   statuts = [
-    { value: 'EN_ATTENTE_RH',      label: 'Attente RH' },
-    { value: 'VALIDEE',            label: 'Validée' },
-    { value: 'EN_COURS',           label: 'En cours' },
-    { value: 'SOLDEE',             label: 'Soldée' },
-    { value: 'REJETEE',            label: 'Rejetée' },
-    { value: 'ANNULEE',            label: 'Annulée' }
+    { value: 'EN_ATTENTE_RH', label: 'Attente RH' },
+    { value: 'MODIFIEE_PAR_RH', label: 'Modifiée — confirmation requise' },
+    { value: 'VALIDEE', label: 'Validée' },
+    { value: 'EN_COURS', label: 'En cours' },
+    { value: 'SOLDEE', label: 'Soldée' },
+    { value: 'REJETEE', label: 'Rejetée' },
+    { value: 'ANNULEE', label: 'Annulée' }
   ];
 
   simForm = this.fb.group({
-    montant:           [null, [Validators.required, Validators.min(100)]],
+    montant: [null, [Validators.required, Validators.min(100)]],
     nombreMensualites: [3, Validators.required]
   });
 
   avanceForm = this.fb.group({
-    montantDemande:    [null as number | null, [Validators.required, Validators.min(100)]],
-    motif:             ['', [Validators.required, Validators.minLength(10)]],
+    montantDemande: [null as number | null, [Validators.required, Validators.min(100)]],
+    motif: ['', [Validators.required, Validators.minLength(10)]],
     nombreMensualites: [3, Validators.required]
   });
 
@@ -970,8 +1017,7 @@ export class AvancesComponent implements OnInit {
 
   private loadData(): void {
     const obs: any = { avances: this.avanceService.getMesAvances() };
-    if (this.isManagerOrAbove()) { obs.attente = this.avanceService.getEnAttenteRH(); }
-    if (this.isRHOrAdmin()) { obs.toutes = this.avanceService.getToutesAvances(); obs.stats = this.avanceService.getStatistiques(); }
+    if (this.isRHOrAdmin()) { obs.attente = this.avanceService.getEnAttenteRH(); obs.toutes = this.avanceService.getToutesAvances(); obs.stats = this.avanceService.getStatistiques(); }
     forkJoin(obs).subscribe({
       next: (data: any) => { this.mesAvances.set(data.avances ?? []); if (data.attente) this.enAttente.set(data.attente); if (data.toutes) this.toutesAvances.set(data.toutes); if (data.stats) this.statsRH.set(data.stats); this.loading.set(false); },
       error: () => this.loading.set(false)
@@ -984,8 +1030,8 @@ export class AvancesComponent implements OnInit {
     if (this.simForm.invalid) { this.simForm.markAllAsTouched(); return; }
     this.simLoading.set(true);
     this.avanceService.simuler({ montant: this.simForm.value.montant!, nombreMensualites: this.simForm.value.nombreMensualites! }).subscribe({
-      next:  (data) => { this.simLoading.set(false); this.simulation.set(data); },
-      error: (err)  => { this.simLoading.set(false); this.showToast(err.error?.message ?? 'Erreur', 'error'); }
+      next: (data) => { this.simLoading.set(false); this.simulation.set(data); },
+      error: (err) => { this.simLoading.set(false); this.showToast(err.error?.message ?? 'Erreur', 'error'); }
     });
   }
 
@@ -1010,6 +1056,24 @@ export class AvancesComponent implements OnInit {
     this.avanceService.annuler(id).subscribe({
       next: (data) => { this.actionLoading.set(false); this.mesAvances.update(a => a.map(x => x.id === id ? data : x)); this.showToast('Demande annulée', 'info'); },
       error: () => { this.actionLoading.set(false); this.showToast('Erreur', 'error'); }
+    });
+  }
+
+  confirmerModification(id: number): void {
+    if (!confirm('Accepter les conditions modifiées par le RH ?')) return;
+    this.actionLoading.set(true);
+    this.avanceService.confirmerModification(id).subscribe({
+      next: (data) => { this.actionLoading.set(false); this.mesAvances.update(a => a.map(x => x.id === id ? data : x)); this.showToast('Conditions acceptées — avance validée !', 'success'); },
+      error: (err) => { this.actionLoading.set(false); this.showToast(err.error?.message ?? 'Erreur', 'error'); }
+    });
+  }
+
+  refuserModification(id: number): void {
+    if (!confirm('Refuser les conditions modifiées ? Votre demande sera annulée.')) return;
+    this.actionLoading.set(true);
+    this.avanceService.refuserModification(id).subscribe({
+      next: (data) => { this.actionLoading.set(false); this.mesAvances.update(a => a.map(x => x.id === id ? data : x)); this.showToast('Modification refusée — demande annulée', 'info'); },
+      error: (err) => { this.actionLoading.set(false); this.showToast(err.error?.message ?? 'Erreur', 'error'); }
     });
   }
 
@@ -1060,41 +1124,41 @@ export class AvancesComponent implements OnInit {
   getRHStats() {
     const stats = this.statsRH();
     return [
-      { value: this.toutesAvances().length, label: 'Total',         color: 'primary' },
+      { value: this.toutesAvances().length, label: 'Total', color: 'primary' },
       { value: stats['EN_ATTENTE_RH'] ?? 0, label: 'En attente RH', color: 'warning' },
-      { value: stats['VALIDEE']       ?? 0, label: 'Validées',      color: 'success' },
-      { value: stats['EN_COURS']      ?? 0, label: 'En cours',      color: 'info'    },
-      { value: stats['SOLDEE']        ?? 0, label: 'Soldées',       color: 'success' },
-      { value: stats['REJETEE']       ?? 0, label: 'Rejetées',      color: 'danger'  }
+      { value: stats['VALIDEE'] ?? 0, label: 'Validées', color: 'success' },
+      { value: stats['EN_COURS'] ?? 0, label: 'En cours', color: 'info' },
+      { value: stats['SOLDEE'] ?? 0, label: 'Soldées', color: 'success' },
+      { value: stats['REJETEE'] ?? 0, label: 'Rejetées', color: 'danger' }
     ];
   }
 
   isProchaine(e: any, a: AvanceSalaire): boolean { return e.dateEcheance === a.prochaineEcheance && !e.paye; }
 
-  isManagerOrAbove(): boolean { return ['MANAGER','RH','ADMIN'].includes(this.role); }
-  isRHOrAdmin(): boolean      { return ['RH','ADMIN'].includes(this.role); }
-  isInvalid(field: string): boolean    { const c = this.avanceForm.get(field); return !!(c?.invalid && c?.touched); }
-  isSimInvalid(field: string): boolean { const c = this.simForm.get(field);    return !!(c?.invalid && c?.touched); }
-  canAnnuler(a: AvanceSalaire): boolean { return a.statut === 'EN_ATTENTE_RH'; }
+  isManagerOrAbove(): boolean { return ['MANAGER', 'RH', 'ADMIN'].includes(this.role); }
+  isRHOrAdmin(): boolean { return ['RH', 'ADMIN'].includes(this.role); }
+  isInvalid(field: string): boolean { const c = this.avanceForm.get(field); return !!(c?.invalid && c?.touched); }
+  isSimInvalid(field: string): boolean { const c = this.simForm.get(field); return !!(c?.invalid && c?.touched); }
+  canAnnuler(a: AvanceSalaire): boolean { return a.statut === 'EN_ATTENTE_RH' || a.statut === 'MODIFIEE_PAR_RH'; }
   getInitiales(a: AvanceSalaire): string { return ((a.employePrenom?.[0] ?? '') + (a.employeNom?.[0] ?? '')).toUpperCase(); }
 
   getSubtitle(): string {
-    const map: Record<string,string> = { EMPLOYE: 'Simulez et demandez une avance sur salaire', RH: 'Gérez et validez les demandes d\'avance', ADMIN: 'Administration des avances sur salaire' };
+    const map: Record<string, string> = { EMPLOYE: 'Simulez et demandez une avance sur salaire', RH: 'Gérez et validez les demandes d\'avance', ADMIN: 'Administration des avances sur salaire' };
     return map[this.role] ?? '';
   }
 
   getBadgeClass(statut: string): string {
-    const map: Record<string,string> = { EN_ATTENTE_RH: 'badge badge-warning', VALIDEE: 'badge badge-success', EN_COURS: 'badge badge-info', SOLDEE: 'badge badge-success', REJETEE: 'badge badge-danger', ANNULEE: 'badge badge-gray' };
+    const map: Record<string, string> = { EN_ATTENTE_RH: 'badge badge-warning', MODIFIEE_PAR_RH: 'badge badge-purple', VALIDEE: 'badge badge-success', EN_COURS: 'badge badge-info', SOLDEE: 'badge badge-success', REJETEE: 'badge badge-danger', ANNULEE: 'badge badge-gray' };
     return map[statut] ?? 'badge badge-gray';
   }
 
   getStatutLabel(statut: string): string {
-    const map: Record<string,string> = { EN_ATTENTE_RH: 'Attente RH', VALIDEE: 'Validée', EN_COURS: 'En cours', SOLDEE: 'Soldée', REJETEE: 'Rejetée', ANNULEE: 'Annulée' };
+    const map: Record<string, string> = { EN_ATTENTE_RH: 'Attente RH', MODIFIEE_PAR_RH: 'Modifiée par RH', VALIDEE: 'Validée', EN_COURS: 'En cours', SOLDEE: 'Soldée', REJETEE: 'Rejetée', ANNULEE: 'Annulée' };
     return map[statut] ?? statut;
   }
 
   getStatutClass(statut: string): string {
-    const map: Record<string,string> = { VALIDEE: 'statut-validee', EN_COURS: 'statut-en-cours', SOLDEE: 'statut-soldee', REJETEE: 'statut-rejetee', ANNULEE: 'statut-annulee', EN_ATTENTE_RH: 'statut-attente-rh' };
+    const map: Record<string, string> = { VALIDEE: 'statut-validee', EN_COURS: 'statut-en-cours', SOLDEE: 'statut-soldee', REJETEE: 'statut-rejetee', ANNULEE: 'statut-annulee', EN_ATTENTE_RH: 'statut-attente-rh', MODIFIEE_PAR_RH: 'statut-modifiee' };
     return map[statut] ?? '';
   }
 

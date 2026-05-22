@@ -214,7 +214,7 @@ import { forkJoin } from 'rxjs';
             <polyline points="6 9 12 15 18 9"/>
           </svg>
           <select [(ngModel)]="statutFilter" (change)="applyFilter()">
-            <option value="">Tous les statuts (sauf annulés)</option>
+            <option value="">Tous les statuts </option>
             <option value="EN_ATTENTE_MANAGER">Att. Manager</option>
             <option value="EN_ATTENTE_RH">Att. RH</option>
             <option value="VALIDEE">Validé</option>
@@ -714,6 +714,20 @@ import { forkJoin } from 'rxjs';
         <div style="display:flex;justify-content:space-between" *ngIf="detailConge()?.motif">
           <span style="color:var(--text-light);font-size:13px">Motif</span>
           <strong>{{ detailConge()?.motif }}</strong>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center" *ngIf="detailConge()?.fichierJustificatif">
+          <span style="color:var(--text-light);font-size:13px">Justificatif</span>
+          <a [href]="apiUrl + detailConge()!.fichierJustificatif"
+             target="_blank" rel="noopener"
+             style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;
+                    color:#2563eb;background:#eff6ff;border:1px solid #bfdbfe;
+                    border-radius:6px;padding:4px 10px;text-decoration:none">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+            </svg>
+            Voir le document
+          </a>
         </div>
         <div style="display:flex;justify-content:space-between" *ngIf="detailConge()?.commentaireRh">
           <span style="color:var(--text-light);font-size:13px">Commentaire RH</span>
@@ -1673,6 +1687,7 @@ export class RhCongesComponent implements OnInit {
 
   private http = inject(HttpClient);
   private API = environment.apiUrl + '/api';
+  apiUrl       = environment.apiUrl;
 
   conges   = signal<any[]>([]);
   employes = signal<any[]>([]);
@@ -1937,8 +1952,8 @@ export class RhCongesComponent implements OnInit {
 
     const id = this.correctionIdConge();
     if (id) {
-      // Mode modification — PUT /rh/conges/conges/{id}/modifier
-      this.http.put(`${this.API}/rh/conges/conges/${id}/modifier`, this.correctionForm)
+      // Mode modification — PUT /rh/conges/{id}/modifier
+      this.http.put(`${this.API}/rh/conges/${id}/modifier`, this.correctionForm)
         .subscribe({
           next: () => {
             this.correctionModal.set(false);
@@ -1949,8 +1964,8 @@ export class RhCongesComponent implements OnInit {
           error: (err) => this.showToast(err.error?.message ?? 'Erreur lors de la modification', 'error')
         });
     } else {
-      // Mode ajout — POST /rh/conges/conges/correction
-      this.http.post(`${this.API}/rh/conges/conges/correction`, this.correctionForm)
+      // Mode ajout — POST /rh/conges/correction
+      this.http.post(`${this.API}/rh/conges/correction`, this.correctionForm)
         .subscribe({
           next: () => {
             this.correctionModal.set(false);
@@ -2135,4 +2150,3 @@ export class RhCongesComponent implements OnInit {
     this.detailConge.set(c);
   }
 }
-

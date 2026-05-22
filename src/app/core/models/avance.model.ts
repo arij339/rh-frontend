@@ -1,5 +1,6 @@
 export type StatutAvance =
   | 'EN_ATTENTE_RH'
+  | 'MODIFIEE_PAR_RH'
   | 'VALIDEE'
   | 'REJETEE'
   | 'ANNULEE'

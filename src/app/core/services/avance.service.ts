@@ -35,6 +35,16 @@ export class AvanceService {
       `${this.API}/employe/avances/${id}/annuler`, {});
   }
 
+  confirmerModification(id: number): Observable<AvanceSalaire> {
+    return this.http.put<AvanceSalaire>(
+      `${this.API}/employe/avances/${id}/confirmer-modification`, {});
+  }
+
+  refuserModification(id: number): Observable<AvanceSalaire> {
+    return this.http.put<AvanceSalaire>(
+      `${this.API}/employe/avances/${id}/refuser-modification`, {});
+  }
+
   // ===== RH =====
   getEnAttenteRH(): Observable<AvanceSalaire[]> {
     return this.http.get<AvanceSalaire[]>(
@@ -72,5 +82,3 @@ export class AvanceService {
       `${this.API}/rh/avances/statistiques`);
   }
 }
-
-

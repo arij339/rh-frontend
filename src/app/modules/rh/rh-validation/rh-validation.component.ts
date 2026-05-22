@@ -142,6 +142,12 @@ const IC = {
                 <span>Soumis le</span>
                 <strong>{{ d.createdAt | date:'dd/MM/yyyy' }}</strong>
               </div>
+              <div class="dcg-item dcg-justif" *ngIf="d.fichierJustificatif">
+                <span>Pièce justificative</span>
+                <a class="justif-link" [href]="getJustificatifUrl(d.fichierJustificatif)" target="_blank" rel="noopener" (click)="$event.stopPropagation()">
+                  📎 Voir le justificatif
+                </a>
+              </div>
             </div>
 
             <div class="dc-actions">
@@ -165,6 +171,85 @@ const IC = {
           <div class="empty-dem" *ngIf="getCongesRH().length === 0">
             <span [innerHTML]="ic.inboxEmpty"></span>
             <p>Aucun congé en attente de validation RH</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ AUTORISATIONS ═══ -->
+      <div *ngIf="activeType() === 'autorisations'">
+        <div class="dem-list">
+          <div class="dem-card stagger"
+               *ngFor="let d of getAutorisationsRH(); let i = index"
+               [style.animation-delay]="i * 60 + 'ms'">
+
+            <div class="dc-top">
+              <div class="dc-av">{{ getInit(d.employePrenom, d.employeNom) }}</div>
+              <div class="dc-who">
+                <strong>
+                  <span class="icon-inline" [innerHTML]="ic.user"></span>
+                  {{ d.employePrenom }} {{ d.employeNom }}
+                </strong>
+                <span>
+                  <span class="icon-inline sm" [innerHTML]="ic.building"></span>
+                  {{ d.employeDepartement }}
+                </span>
+              </div>
+              <span class="dc-badge auto">
+                <span [innerHTML]="ic.clock"></span>
+                Autorisation de sortie
+              </span>
+            </div>
+
+            <div class="dc-grid">
+              <div class="dcg-item">
+                <span>Date</span>
+                <strong>{{ d.dateSortie | date:'dd/MM/yyyy' }}</strong>
+              </div>
+              <div class="dcg-item">
+                <span>Heure sortie</span>
+                <strong>
+                  <span class="icon-inline sm" [innerHTML]="ic.sun"></span>
+                  {{ d.heureSortie }}
+                </strong>
+              </div>
+              <div class="dcg-item">
+                <span>Retour prévu</span>
+                <strong>
+                  <span class="icon-inline sm" [innerHTML]="ic.moonSet"></span>
+                  {{ d.heureRetourPrevue }}
+                </strong>
+              </div>
+              <div class="dcg-item">
+                <span>Type</span>
+                <strong>{{ d.typeSortie || '—' }}</strong>
+              </div>
+              <div class="dcg-item">
+                <span>Motif</span>
+                <strong>{{ d.motif || '—' }}</strong>
+              </div>
+            </div>
+
+            <div class="dc-actions">
+              <div class="textarea-wrap">
+                <span class="ta-icon" [innerHTML]="ic.messageSquare"></span>
+                <textarea [(ngModel)]="comments[d.id]"
+                          placeholder="Motif de décision (optionnel)..."
+                          rows="2"></textarea>
+              </div>
+              <div class="act-btns">
+                <button class="btn-reject" (click)="validerAutorisation(d.id, false)">
+                  <span [innerHTML]="ic.x"></span> Refuser
+                </button>
+                <button class="btn-approve" (click)="validerAutorisation(d.id, true)">
+                  <span [innerHTML]="ic.check"></span> Valider
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="empty-dem" *ngIf="getAutorisationsRH().length === 0">
+            <span [innerHTML]="ic.inboxEmpty"></span>
+            <p>Aucune autorisation de sortie en attente de validation RH</p>
           </div>
         </div>
       </div>
@@ -200,12 +285,16 @@ const IC = {
                 <strong class="highlight">{{ d.montantDemande | number:'1.3-3' }} DT</strong>
               </div>
               <div class="dcg-item">
-                <span>SALAIRE DE BASE</span>
-                <strong>{{ d.salaireBase | number:'1.3-3' }} DT</strong>
+                <span>MONTANT ACCORDÉ</span>
+                <input type="number" [(ngModel)]="d.montantAccordeEdit" [placeholder]="d.montantDemande" class="edit-input" />
               </div>
               <div class="dcg-item">
                 <span>MENSUALITÉS</span>
-                <strong>{{ d.nombreMensualites }}</strong>
+                <input type="number" [(ngModel)]="d.mensualitesEdit" [placeholder]="d.nombreMensualites" class="edit-input" />
+              </div>
+              <div class="dcg-item">
+                <span>SALAIRE DE BASE</span>
+                <strong>{{ d.salaireBase | number:'1.3-3' }} DT</strong>
               </div>
               <div class="dcg-item">
                 <span>MOTIF</span>
@@ -288,7 +377,7 @@ const IC = {
               </div>
               <div class="dcg-item">
                 <span>Justification</span>
-                <strong>{{ d.justification || '—' }}</strong>
+                <strong>{{ d.motif || '—' }}</strong>
               </div>
             </div>
 
@@ -317,80 +406,7 @@ const IC = {
         </div>
       </div>
 
-      <!-- ═══ AUTORISATIONS ═══ -->
-      <div *ngIf="activeType() === 'autorisations'">
-        <div class="dem-list">
-          <div class="dem-card stagger"
-               *ngFor="let d of getAutorisationsRH(); let i = index"
-               [style.animation-delay]="i * 60 + 'ms'">
 
-            <div class="dc-top">
-              <div class="dc-av">{{ getInit(d.employePrenom, d.employeNom) }}</div>
-              <div class="dc-who">
-                <strong>
-                  <span class="icon-inline" [innerHTML]="ic.user"></span>
-                  {{ d.employePrenom }} {{ d.employeNom }}
-                </strong>
-                <span>
-                  <span class="icon-inline sm" [innerHTML]="ic.building"></span>
-                  {{ d.employeDepartement }}
-                </span>
-              </div>
-              <span class="dc-badge auto">
-                <span [innerHTML]="ic.clock"></span>
-                Autorisation de sortie
-              </span>
-            </div>
-
-            <div class="dc-grid">
-              <div class="dcg-item">
-                <span>Date</span>
-                <strong>{{ d.date | date:'dd/MM/yyyy' }}</strong>
-              </div>
-              <div class="dcg-item">
-                <span>Heure de sortie</span>
-                <strong>
-                  <span class="icon-inline sm" [innerHTML]="ic.sun"></span>
-                  {{ d.heureSortie }}
-                </strong>
-              </div>
-              <div class="dcg-item">
-                <span>Retour prévu</span>
-                <strong>
-                  <span class="icon-inline sm" [innerHTML]="ic.moonSet"></span>
-                  {{ d.heureRetour }}
-                </strong>
-              </div>
-              <div class="dcg-item">
-                <span>Motif</span>
-                <strong>{{ d.motif || '—' }}</strong>
-              </div>
-            </div>
-
-            <div class="dc-actions">
-              <div class="textarea-wrap">
-                <span class="ta-icon" [innerHTML]="ic.messageSquare"></span>
-                <textarea [(ngModel)]="comments[d.id]"
-                          placeholder="Commentaire..."
-                          rows="2"></textarea>
-              </div>
-              <div class="act-btns">
-                <button class="btn-reject" (click)="validerAutorisation(d.id, false)">
-                  <span [innerHTML]="ic.x"></span> Refuser
-                </button>
-                <button class="btn-approve" (click)="validerAutorisation(d.id, true)">
-                  <span [innerHTML]="ic.check"></span> Approuver
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div class="empty-dem" *ngIf="getAutorisationsRH().length === 0">
-            <span [innerHTML]="ic.inboxEmpty"></span>
-            <p>Aucune autorisation en attente</p>
-          </div>
-        </div>
-      </div>
 
     </div>
 
@@ -729,6 +745,31 @@ const IC = {
     @keyframes spin    { to { transform: rotate(360deg); } }
     @keyframes fadeIn  { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
     .fade-in { animation: fadeIn 0.35s ease; }
+
+    /* ── Edit Input ── */
+    .edit-input {
+      width: 100%; padding: 6px 10px; border: 1.5px solid var(--gray-mid);
+      border-radius: 6px; font-size: 13px; font-weight: 600;
+      color: var(--primary); background: white; transition: all 0.2s;
+      &:focus { border-color: var(--secondary); outline: none; box-shadow: 0 0 0 3px rgba(14,157,175,0.1); }
+    }
+
+    .dcg-justif { grid-column: 1 / -1; }
+
+    .justif-link {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 6px 14px; border-radius: 8px;
+      background: linear-gradient(135deg, rgba(11,110,126,0.08), rgba(14,157,175,0.12));
+      color: var(--primary); font-size: 12px; font-weight: 600;
+      text-decoration: none; transition: all 0.25s ease;
+      border: 1px solid rgba(11,110,126,0.15);
+      &:hover {
+        background: linear-gradient(135deg, var(--primary), var(--secondary));
+        color: white; transform: translateY(-1px);
+        box-shadow: 0 4px 14px rgba(11,110,126,0.25);
+        border-color: transparent;
+      }
+    }
   `]
 })
 export class RhValidationComponent implements OnInit {
@@ -739,9 +780,9 @@ export class RhValidationComponent implements OnInit {
   ic = IC;
 
   conges        = signal<any[]>([]);
+  autorisations = signal<any[]>([]);
   avances       = signal<any[]>([]);
   augmentations = signal<any[]>([]);
-  autorisations = signal<any[]>([]);
   loading       = signal(true);
   activeType    = signal<TypeDemande>('conges');
   comments: Record<number, string> = {};
@@ -752,9 +793,9 @@ export class RhValidationComponent implements OnInit {
 
   typeTabs = [
     { key: 'conges'        as TypeDemande, svg: IC.calendar,   label: 'Congés'        },
+    { key: 'autorisations' as TypeDemande, svg: IC.clock,      label: 'Autorisations' },
     { key: 'avances'       as TypeDemande, svg: IC.banknote,   label: 'Avances'       },
-    { key: 'augmentations' as TypeDemande, svg: IC.trendingUp, label: 'Augmentations' },
-    { key: 'autorisations' as TypeDemande, svg: IC.clock,      label: 'Autorisations' }
+    { key: 'augmentations' as TypeDemande, svg: IC.trendingUp, label: 'Augmentations' }
   ];
 
   ngOnInit(): void { this.loadData(); }
@@ -763,16 +804,21 @@ export class RhValidationComponent implements OnInit {
     this.loading.set(true);
     forkJoin({
       conges:        this.http.get<any[]>(`${this.API}/rh/conges/en-attente`),
+      autorisations: this.http.get<any[]>(`${this.API}/rh/sorties/en-attente`),
       avances:       this.http.get<any[]>(`${this.API}/rh/avances/en-attente`),
-      augmentations: this.http.get<any[]>(`${this.API}/rh/augmentations/en-attente`),
-      // ✅ FIX: endpoint corrigé → /rh/sorties/en-attente (pas /rh/autorisations/en-attente)
-      autorisations: this.http.get<any[]>(`${this.API}/rh/sorties/en-attente`)
+      augmentations: this.http.get<any[]>(`${this.API}/rh/augmentations/en-attente`)
     }).subscribe({
       next: (d) => {
         this.conges.set(d.conges ?? []);
-        this.avances.set(d.avances ?? []);
-        this.augmentations.set(d.augmentations ?? []);
         this.autorisations.set(d.autorisations ?? []);
+        // Initialiser les champs d'édition pour les avances
+        const avances = (d.avances ?? []).map((a: any) => ({
+          ...a,
+          montantAccordeEdit: a.montantDemande,
+          mensualitesEdit: a.nombreMensualites
+        }));
+        this.avances.set(avances);
+        this.augmentations.set(d.augmentations ?? []);
         this.loading.set(false);
       },
       error: () => this.loading.set(false)
@@ -780,18 +826,18 @@ export class RhValidationComponent implements OnInit {
   }
 
   getCongesRH():        any[] { return this.conges().filter(c => c.statut === 'EN_ATTENTE_RH'); }
+  getAutorisationsRH(): any[] { return this.autorisations().filter(a => a.statut === 'EN_ATTENTE_RH'); }
   getAvancesRH():       any[] { return this.avances().filter(a => a.statut === 'EN_ATTENTE_RH'); }
   getAugmentationsRH(): any[] { return this.augmentations().filter(a => a.statut === 'EN_ATTENTE_RH'); }
-  getAutorisationsRH(): any[] { return this.autorisations().filter(a => a.statut === 'EN_ATTENTE' || a.statut === 'EN_ATTENTE_RH'); }
 
   getCount(type: TypeDemande): number {
-    return { conges: this.getCongesRH().length, avances: this.getAvancesRH().length,
-             augmentations: this.getAugmentationsRH().length, autorisations: this.getAutorisationsRH().length }[type];
+    return { conges: this.getCongesRH().length, autorisations: this.getAutorisationsRH().length,
+             avances: this.getAvancesRH().length, augmentations: this.getAugmentationsRH().length }[type];
   }
 
   totalEnAttente(): number {
-    return this.getCongesRH().length + this.getAvancesRH().length +
-           this.getAugmentationsRH().length + this.getAutorisationsRH().length;
+    return this.getCongesRH().length + this.getAutorisationsRH().length +
+           this.getAvancesRH().length + this.getAugmentationsRH().length;
   }
 
   validerConge(id: number, approuve: boolean): void {
@@ -807,17 +853,22 @@ export class RhValidationComponent implements OnInit {
 
   validerAvance(id: number, approuve: boolean): void {
     const avance = this.avances().find((a: any) => a.id === id);
-    // ✅ FIX: "traiter" au lieu de "valider" → /rh/avances/{id}/traiter
     this.http.put(`${this.API}/rh/avances/${id}/traiter`,
       approuve
         ? { approuve: true,
-            montantAccorde:    avance?.montantDemande,
-            nombreMensualites: avance?.nombreMensualites,
+            montantAccorde:    avance?.montantAccordeEdit || avance?.montantDemande,
+            nombreMensualites: avance?.mensualitesEdit || avance?.nombreMensualites,
             commentaire: this.comments[id] ?? '' }
         : { approuve: false, commentaire: this.comments[id] ?? '' }
     ).subscribe({
-      next:  () => { this.avances.update(l => l.filter((a: any) => a.id !== id));
-                     this.showToast(approuve ? 'Avance accordée — employé notifié' : 'Avance refusée', approuve ? 'success' : 'info'); },
+      next:  (res: any) => { 
+        this.avances.update(l => l.filter((a: any) => a.id !== id));
+        if (res && res.statut === 'MODIFIEE_PAR_RH') {
+          this.showToast('Modifications envoyées à l\'employé pour confirmation', 'info');
+        } else {
+          this.showToast(approuve ? 'Avance accordée — employé notifié' : 'Avance refusée', approuve ? 'success' : 'info'); 
+        }
+      },
       error: (err: any) => this.showToast(err?.error?.message ?? 'Erreur serveur', 'error')
     });
   }
@@ -834,7 +885,6 @@ export class RhValidationComponent implements OnInit {
   }
 
   validerAutorisation(id: number, approuve: boolean): void {
-    // ✅ FIX: "sorties" au lieu de "autorisations" → /rh/sorties/{id}/valider
     this.http.put(`${this.API}/rh/sorties/${id}/valider`,
       { approuve, commentaire: this.comments[id] ?? '' }
     ).subscribe({
@@ -844,8 +894,13 @@ export class RhValidationComponent implements OnInit {
     });
   }
 
+
   getInit(p: string, n: string): string {
     return ((p?.[0] ?? '') + (n?.[0] ?? '')).toUpperCase();
+  }
+
+  getJustificatifUrl(path: string): string {
+    return environment.apiUrl + path;
   }
 
   showToast(message: string, type: string): void {

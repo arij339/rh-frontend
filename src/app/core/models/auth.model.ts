@@ -11,6 +11,7 @@ export interface AuthResponse {
   prenom: string;
   email: string;
   mustChangePassword: boolean;
+  daysRemaining: number;
 }
 
 export interface UserProfile {

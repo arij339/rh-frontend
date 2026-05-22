@@ -482,6 +482,84 @@ const IC = {
         </div>
       </div>
 
+      <!-- ═══ 2FA ═══ -->
+      <div class="securite-card twofa-card">
+        <div class="twofa-header">
+          <div class="sc-icon-wrap" style="background:linear-gradient(135deg,#ede9fe,#ddd6fe);color:#7c3aed">
+            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/><circle cx="12" cy="16" r="1" fill="currentColor" stroke="none"/></svg>
+          </div>
+          <div style="flex:1">
+            <h3>Authentification à deux facteurs (2FA)</h3>
+            <p>Sécurisez votre compte avec Google Authenticator ou toute application TOTP.</p>
+          </div>
+          <span class="twofa-badge" [class.badge-on]="twoFaEnabled()" [class.badge-off]="!twoFaEnabled()">
+            <span class="badge-dot"></span>{{ twoFaEnabled() ? 'Activée' : 'Désactivée' }}
+          </span>
+        </div>
+
+        <div class="form-alert success" *ngIf="twoFaSuccess()">✓ {{ twoFaSuccess() }}</div>
+
+        <!-- IDLE + disabled -->
+        <ng-container *ngIf="twoFaStep() === 'idle' && !twoFaEnabled()">
+          <p style="font-size:13px;color:#64748b;margin-bottom:16px">Ajoutez une couche de sécurité supplémentaire à votre connexion.</p>
+          <button class="btn btn-primary" style="width:fit-content" (click)="startSetup2FA()">Activer la 2FA</button>
+        </ng-container>
+
+        <!-- IDLE + enabled -->
+        <ng-container *ngIf="twoFaStep() === 'idle' && twoFaEnabled()">
+          <p style="font-size:13px;color:#64748b;margin-bottom:16px">Chaque connexion nécessite un code de votre application d'authentification.</p>
+          <button class="btn btn-danger-outline" (click)="twoFaStep.set('disable');twoFaCode='';twoFaError.set('')">Désactiver la 2FA</button>
+        </ng-container>
+
+        <!-- SETUP -->
+        <ng-container *ngIf="twoFaStep() === 'setup'">
+          <div *ngIf="twoFaLoading()" style="padding:24px;text-align:center;color:#64748b;font-size:13px">Génération du QR code…</div>
+          <ng-container *ngIf="!twoFaLoading()">
+            <div class="tfa-steps-list">
+              <div class="tfa-step-item"><span class="tfa-num">1</span>Installez <strong>Google Authenticator</strong> sur votre téléphone</div>
+              <div class="tfa-step-item"><span class="tfa-num">2</span>Scannez ce QR code avec l'application</div>
+            </div>
+            <div class="qr-container">
+              <img [src]="twoFaQrCode()" alt="QR Code 2FA" class="qr-image" />
+            </div>
+            <details class="secret-reveal">
+              <summary>Saisir le code manuellement</summary>
+              <code class="secret-text">{{ twoFaSecret() }}</code>
+            </details>
+            <div class="tfa-step-item" style="margin:12px 0 8px"><span class="tfa-num">3</span>Entrez le code à 6 chiffres affiché dans l'application</div>
+            <div class="form-group">
+              <input type="text" inputmode="numeric" maxlength="6" placeholder="000000"
+                     class="tfa-code-field" [(ngModel)]="twoFaCode" />
+            </div>
+            <div class="form-alert error" *ngIf="twoFaError()">{{ twoFaError() }}</div>
+            <div style="display:flex;gap:10px;margin-top:14px">
+              <button class="btn btn-primary" (click)="confirm2FA()" [disabled]="twoFaLoading()">
+                <span *ngIf="!twoFaLoading()">Confirmer et activer</span>
+                <span *ngIf="twoFaLoading()" class="spinner"></span>
+              </button>
+              <button type="button" class="btn btn-outline" (click)="twoFaStep.set('idle')">Annuler</button>
+            </div>
+          </ng-container>
+        </ng-container>
+
+        <!-- DISABLE -->
+        <ng-container *ngIf="twoFaStep() === 'disable'">
+          <p style="font-size:13px;color:#64748b;margin-bottom:12px">Entrez le code de votre application pour confirmer la désactivation.</p>
+          <div class="form-group">
+            <input type="text" inputmode="numeric" maxlength="6" placeholder="000000"
+                   class="tfa-code-field" [(ngModel)]="twoFaCode" />
+          </div>
+          <div class="form-alert error" *ngIf="twoFaError()">{{ twoFaError() }}</div>
+          <div style="display:flex;gap:10px;margin-top:14px">
+            <button class="btn btn-danger" (click)="confirmDisable2FA()" [disabled]="twoFaLoading()">
+              <span *ngIf="!twoFaLoading()">Désactiver</span>
+              <span *ngIf="twoFaLoading()" class="spinner"></span>
+            </button>
+            <button type="button" class="btn btn-outline" (click)="twoFaStep.set('idle')">Annuler</button>
+          </div>
+        </ng-container>
+      </div>
+
     </div>
   </div>
 
@@ -664,6 +742,26 @@ const IC = {
     .securite-card { background: white; border-radius: 20px; padding: 28px; box-shadow: var(--sh-md); border: 1px solid var(--c-gray-200); h3 { font-size: 17px; font-weight: 700; color: var(--c-text); margin: 0 0 8px; } p { font-size: 13px; color: var(--c-muted); margin-bottom: 20px; line-height: 1.5; } }
     .sc-icon-wrap { width: 52px; height: 52px; border-radius: 14px; display: flex; align-items: center; justify-content: center; margin-bottom: 14px; flex-shrink: 0; svg { display: block; } &.teal { background: var(--c-teal-lt); color: var(--c-teal); } &.blue { background: var(--c-blue-lt); color: var(--c-blue); } }
 
+    /* ── 2FA Card ── */
+    .twofa-card { grid-column: 1 / -1; }
+    .twofa-header { display: flex; align-items: flex-start; gap: 14px; margin-bottom: 16px; }
+    .twofa-badge { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; padding: 4px 12px; border-radius: 20px; white-space: nowrap; }
+    .badge-on { background: #f0fdf4; color: #15803d; border: 1px solid #86efac; }
+    .badge-off { background: #f8fafc; color: #64748b; border: 1px solid #e2e8f0; }
+    .badge-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+    .tfa-steps-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
+    .tfa-step-item { display: flex; align-items: center; gap: 10px; font-size: 13.5px; color: #334155; }
+    .tfa-num { min-width: 26px; height: 26px; border-radius: 50%; background: #6366f1; color: #fff; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .qr-container { display: flex; justify-content: center; margin: 16px 0; padding: 16px; background: white; border: 1px solid #e2e8f0; border-radius: 16px; width: fit-content; }
+    .qr-image { width: 180px; height: 180px; display: block; }
+    .secret-reveal { font-size: 13px; color: #64748b; margin: 8px 0; cursor: pointer; }
+    .secret-text { display: block; font-family: monospace; letter-spacing: 3px; font-size: 13px; background: #f8fafc; padding: 10px 14px; border-radius: 10px; margin-top: 8px; word-break: break-all; color: #334155; }
+    .tfa-code-field { width: 100%; text-align: center; font-size: 26px; font-weight: 700; letter-spacing: 12px; padding: 12px 10px; border-radius: 12px; border: 2px solid #e2e8f0; outline: none; color: #0f172a; transition: border-color 0.2s; box-sizing: border-box; }
+    .tfa-code-field:focus { border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,0.1); }
+    .btn-danger-outline { background: transparent; border: 1.5px solid #ef4444; color: #ef4444; padding: 10px 20px; border-radius: 12px; font-size: 13.5px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+    .btn-danger-outline:hover { background: #fef2f2; }
+    .btn-danger { background: #ef4444; color: white; border: none; padding: 10px 20px; border-radius: 12px; font-size: 13.5px; font-weight: 600; cursor: pointer; }
+
     .pwd-input { position: relative; display: flex; }
     .pwd-input input { flex: 1; padding-right: 44px; }
     .pwd-toggle { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: var(--c-muted); display: flex; align-items: center; padding: 0; svg { display: block; } &:hover { color: var(--c-teal); } }
@@ -736,6 +834,17 @@ export class ProfilComponent implements OnInit {
   notifLoading    = signal(false);
   deletionLoading = signal(false);
 
+  // ── 2FA ──
+  twoFaEnabled       = signal(false);
+  twoFaStatusLoaded  = false;
+  twoFaStep          = signal<'idle' | 'setup' | 'disable'>('idle');
+  twoFaQrCode   = signal('');
+  twoFaSecret   = signal('');
+  twoFaCode     = '';
+  twoFaLoading  = signal(false);
+  twoFaError    = signal('');
+  twoFaSuccess  = signal('');
+
   // ── Photo de profil ──
   photoUploading = signal(false);
   photoPreview   = signal<string | null>(null);
@@ -770,7 +879,9 @@ export class ProfilComponent implements OnInit {
     confirmPassword: ['', Validators.required]
   });
 
-  ngOnInit(): void { this.loadProfil(); }
+  ngOnInit(): void {
+    this.loadProfil();
+  }
 
   private loadProfil(): void {
    this.profilService.getMonProfil().subscribe({
@@ -800,7 +911,22 @@ export class ProfilComponent implements OnInit {
     this.userPhotoService.setPhoto(p.photoUrl ?? null);
   }
 
-  setTab(tab: Tab): void { this.activeTab.set(tab); this.saveError.set(''); this.saveSuccess.set(''); }
+  setTab(tab: Tab): void {
+    this.activeTab.set(tab);
+    this.saveError.set('');
+    this.saveSuccess.set('');
+    if (tab === 'securite' && !this.twoFaStatusLoaded) {
+      this.twoFaStatusLoaded = true;
+      this.authService.get2FAStatus().subscribe({
+        next: (r) => this.twoFaEnabled.set(r.twoFactorEnabled),
+        error: (e) => {
+          // Réinitialiser pour permettre un nouvel essai à la prochaine navigation
+          this.twoFaStatusLoaded = false;
+          this.twoFaError.set('Impossible de récupérer le statut 2FA. Veuillez réessayer.');
+        }
+      });
+    }
+  }
 
   onSaveProfil(): void {
     this.saveLoading.set(true); this.saveError.set('');
@@ -987,6 +1113,44 @@ export class ProfilComponent implements OnInit {
   getHistoriqueIconSvg(type: string): string {
     const map: Record<string, string> = { RECRUTEMENT: IC.star, PROMOTION: IC.trendUp, MUTATION: IC.refresh, AUTRE: IC.fileText };
     return map[type] ?? IC.fileText;
+  }
+
+  // ── 2FA Methods ──────────────────────────────────────────────────────────────
+
+  startSetup2FA(): void {
+    this.twoFaStep.set('setup');
+    this.twoFaLoading.set(true);
+    this.twoFaError.set('');
+    this.authService.setup2FA().subscribe({
+      next: (r) => { this.twoFaLoading.set(false); this.twoFaQrCode.set(r.qrCodeDataUrl); this.twoFaSecret.set(r.secret); },
+      error: (e) => { this.twoFaLoading.set(false); this.twoFaError.set(e?.error?.message ?? 'Erreur'); this.twoFaStep.set('idle'); }
+    });
+  }
+
+  confirm2FA(): void {
+    this.twoFaLoading.set(true); this.twoFaError.set('');
+    this.authService.enable2FA(this.twoFaCode).subscribe({
+      next: () => {
+        this.twoFaLoading.set(false); this.twoFaEnabled.set(true);
+        this.twoFaStep.set('idle'); this.twoFaCode = '';
+        this.twoFaSuccess.set('Double authentification activée !');
+        setTimeout(() => this.twoFaSuccess.set(''), 4000);
+      },
+      error: (e) => { this.twoFaLoading.set(false); this.twoFaError.set(e?.error?.message ?? 'Code incorrect'); }
+    });
+  }
+
+  confirmDisable2FA(): void {
+    this.twoFaLoading.set(true); this.twoFaError.set('');
+    this.authService.disable2FA(this.twoFaCode).subscribe({
+      next: () => {
+        this.twoFaLoading.set(false); this.twoFaEnabled.set(false);
+        this.twoFaStep.set('idle'); this.twoFaCode = '';
+        this.twoFaSuccess.set('Double authentification désactivée.');
+        setTimeout(() => this.twoFaSuccess.set(''), 4000);
+      },
+      error: (e) => { this.twoFaLoading.set(false); this.twoFaError.set(e?.error?.message ?? 'Code incorrect'); }
+    });
   }
 
   showToast(message: string, type: string): void {

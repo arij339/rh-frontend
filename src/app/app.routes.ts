@@ -71,7 +71,7 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./modules/admin/admin-dashboard/admin-dashboard.component')
             .then(m => m.AdminDashboardComponent),
-        canActivate: [authGuard],
+        canActivate: [authGuard, roleGuard],
         data: { roles: ['ADMIN'] }
       },
       {
@@ -79,7 +79,7 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./modules/admin/admin-users/admin-users.component')
             .then(m => m.AdminUsersComponent),
-        canActivate: [authGuard],
+        canActivate: [authGuard, roleGuard],
         data: { roles: ['ADMIN'] }
       },
       {
@@ -87,7 +87,7 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./modules/admin/admin-config/admin-config.component')
             .then(m => m.AdminConfigComponent),
-        canActivate: [authGuard],
+        canActivate: [authGuard, roleGuard],
         data: { roles: ['ADMIN'] }
       },
       {
@@ -95,7 +95,7 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./modules/admin/admin-securite/admin-securite.component')
             .then(m => m.AdminSecuriteComponent),
-        canActivate: [authGuard],
+        canActivate: [authGuard, roleGuard],
         data: { roles: ['ADMIN'] }
       },
       {
@@ -103,7 +103,7 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./modules/admin/admin-logs/admin-logs.component')
             .then(m => m.AdminLogsComponent),
-        canActivate: [authGuard],
+        canActivate: [authGuard, roleGuard],
         data: { roles: ['ADMIN'] }
       },
 
@@ -218,7 +218,7 @@ export const routes: Routes = [
           import('./modules/profil/profil.component')
             .then(m => m.ProfilComponent),
         canActivate: [authGuard],
-        data: { roles: ['EMPLOYE', 'MANAGER', 'RH'] }
+        data: { roles: ['EMPLOYE', 'MANAGER', 'RH', 'ADMIN'] }
       },
 
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' }

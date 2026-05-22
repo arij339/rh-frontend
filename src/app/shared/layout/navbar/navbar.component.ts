@@ -39,7 +39,7 @@ const IC = {
   </button>
 
   <!-- Banner mot de passe temporaire -->
-  <div class="pwd-banner" *ngIf="mustChangePassword">
+  <div class="pwd-banner" *ngIf="mustChangePassword && authService.getRole() !== 'ADMIN'">
     <span [innerHTML]="ic.alertKey | safeHtml"></span>
     Mot de passe temporaire actif —
     <a routerLink="/change-password">Changer maintenant</a>
@@ -346,7 +346,7 @@ const IC = {
 export class NavbarComponent implements OnInit {
   @Output() toggleSidebar = new EventEmitter<void>();
 
-  private authService   = inject(AuthService);
+  authService   = inject(AuthService);
   private notifService  = inject(NotificationService);
   private router        = inject(Router);
   private userPhotoService = inject(UserPhotoService);
@@ -400,7 +400,29 @@ export class NavbarComponent implements OnInit {
       });
     }
     if (notif.lien) {
-      this.router.navigate([notif.lien]);
+      let finalLink = notif.lien;
+      const role = this.authService.getRole();
+
+      // === LOGIQUE DE REDIRECTION POUR LE MANAGER ===
+      if (role === 'MANAGER' && notif.type === 'NOUVELLE_DEMANDE_EN_ATTENTE') {
+        finalLink = '/validation'; // Le manager va sur sa page "Demandes à Valider"
+      }
+
+      // === LOGIQUE DE REDIRECTION POUR LE RH ===
+      if (role === 'RH') {
+        if (finalLink.includes('reclamations')) {
+          finalLink = '/rh/reclamations';
+        } 
+        else if (notif.type === 'NOUVELLE_DEMANDE_EN_ATTENTE') {
+          if (finalLink.includes('conges')) finalLink = '/rh/conges';
+          else if (finalLink.includes('avances')) finalLink = '/rh/avances';
+          else if (finalLink.includes('autorisations') || finalLink.includes('augmentations')) {
+            finalLink = '/rh/validation';
+          }
+        }
+      }
+
+      this.router.navigate([finalLink]);
       this.showNotifs = false;
     }
   }

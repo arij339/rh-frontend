@@ -1,7 +1,8 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
-import { forkJoin } from 'rxjs';
+import { forkJoin, of } from 'rxjs';
+import { catchError } from 'rxjs/operators';
 import { AuthService } from '../../core/services/auth.service';
 import { DashboardService } from '../../core/services/dashboard.service';
 import { SafeHtmlPipe } from '../../shared/pipes/safe-html.pipe';
@@ -44,6 +45,48 @@ const IC = {
   ],
   template: `
 <div class="dashboard fade-in">
+
+  <!-- ═══ BANNER EXPIRATION MOT DE PASSE TEMPORAIRE ═══ -->
+  <div class="pwd-expiry-banner"
+       *ngIf="mustChangePassword && role !== 'ADMIN'"
+       [class.banner-urgent]="daysRemaining <= 2"
+       [class.banner-warn]="daysRemaining > 2 && daysRemaining <= 4">
+    <div class="peb-left">
+      <div class="peb-icon" [class.icon-urgent]="daysRemaining <= 2">
+        <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+          <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+          <circle cx="12" cy="16" r="1" fill="currentColor" stroke="none"/>
+        </svg>
+      </div>
+      <div class="peb-text">
+        <strong>Mot de passe temporaire actif</strong>
+        <span *ngIf="daysRemaining > 0">
+          Vous devez changer votre mot de passe.
+          Il vous reste <strong>{{ daysRemaining }} jour{{ daysRemaining > 1 ? 's' : '' }}</strong>
+          avant le blocage de votre compte.
+        </span>
+        <span *ngIf="daysRemaining === 0" class="last-chance">
+          Délai expiré aujourd'hui — changez votre mot de passe maintenant avant minuit !
+        </span>
+      </div>
+    </div>
+    <div class="peb-right">
+      <div class="peb-counter" [class.counter-urgent]="daysRemaining <= 2">
+        <span class="counter-num">{{ daysRemaining }}</span>
+        <span class="counter-label">jour{{ daysRemaining > 1 ? 's' : '' }}</span>
+      </div>
+      <a routerLink="/change-password" class="peb-btn">
+        Changer maintenant
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"
+             stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+          <line x1="5" y1="12" x2="19" y2="12"/>
+          <polyline points="12 5 19 12 12 19"/>
+        </svg>
+      </a>
+    </div>
+  </div>
 
   <!-- ===== HEADER (uniquement pour MANAGER) ===== -->
   <ng-container *ngIf="role === 'MANAGER'">
@@ -111,8 +154,8 @@ const IC = {
         <div class="stat-card-bg"></div>
         <div class="stat-icon-wrap teal"><span [innerHTML]="ic.banknote | safeHtml"></span></div>
         <div class="stat-body">
-          <span class="stat-value">{{ mgAvancesAttente() }}</span>
-          <span class="stat-title">Avances à traiter</span>
+          <span class="stat-value">{{ mgAugmentationsAttente() }}</span>
+          <span class="stat-title">Augmentations à traiter</span>
           <span class="stat-sub">Avis manager requis</span>
         </div>
         <a routerLink="/validation" class="stat-action">
@@ -432,6 +475,64 @@ const IC = {
     .action-green:hover .action-label, .action-green:hover .action-arrow { color: white; }
     .action-green:hover .action-icon-wrap { background: rgba(255,255,255,0.2); color: white; }
 
+    /* ── Banner expiration mot de passe ── */
+    .pwd-expiry-banner {
+      display: flex; align-items: center; justify-content: space-between; gap: 16px;
+      background: linear-gradient(135deg, #fffbeb, #fef3c7);
+      border: 1.5px solid #f59e0b; border-radius: 14px;
+      padding: 16px 20px; margin-bottom: 20px;
+      box-shadow: 0 4px 16px rgba(245,158,11,0.12);
+      animation: fadeUp 0.3s ease both;
+    }
+    .banner-urgent {
+      background: linear-gradient(135deg, #fff1f2, #ffe4e6);
+      border-color: #f43f5e;
+      box-shadow: 0 4px 16px rgba(244,63,94,0.15);
+    }
+    .banner-warn {
+      background: linear-gradient(135deg, #fff7ed, #ffedd5);
+      border-color: #f97316;
+      box-shadow: 0 4px 16px rgba(249,115,22,0.15);
+    }
+    .peb-left { display: flex; align-items: center; gap: 14px; flex: 1; }
+    .peb-icon {
+      width: 44px; height: 44px; border-radius: 12px; flex-shrink: 0;
+      background: rgba(245,158,11,0.12); color: #d97706;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .icon-urgent { background: rgba(244,63,94,0.1); color: #f43f5e; }
+    .peb-text { display: flex; flex-direction: column; gap: 3px; font-size: 13.5px; color: #92400e; }
+    .peb-text strong { font-size: 14px; font-weight: 700; color: #78350f; }
+    .banner-urgent .peb-text, .banner-urgent .peb-text strong { color: #be123c; }
+    .banner-warn .peb-text, .banner-warn .peb-text strong { color: #9a3412; }
+    .last-chance { font-weight: 600; color: #dc2626; }
+    .peb-right { display: flex; align-items: center; gap: 12px; }
+    .peb-counter {
+      display: flex; flex-direction: column; align-items: center;
+      min-width: 52px; padding: 8px 12px; border-radius: 10px;
+      background: rgba(245,158,11,0.15); border: 1px solid rgba(245,158,11,0.3);
+    }
+    .counter-num { font-size: 24px; font-weight: 800; line-height: 1; color: #d97706; }
+    .counter-label { font-size: 10px; font-weight: 600; color: #92400e; text-transform: uppercase; letter-spacing: 0.5px; }
+    .counter-urgent { background: rgba(244,63,94,0.12); border-color: rgba(244,63,94,0.3); }
+    .counter-urgent .counter-num { color: #f43f5e; }
+    .counter-urgent .counter-label { color: #be123c; }
+    .peb-btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: #f59e0b; color: #fff;
+      padding: 9px 16px; border-radius: 10px;
+      font-size: 13px; font-weight: 600; text-decoration: none;
+      transition: all 0.2s; white-space: nowrap;
+      box-shadow: 0 2px 8px rgba(245,158,11,0.3);
+    }
+    .peb-btn:hover { background: #d97706; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(245,158,11,0.4); }
+    .banner-urgent .peb-btn { background: #f43f5e; box-shadow: 0 2px 8px rgba(244,63,94,0.3); }
+    .banner-urgent .peb-btn:hover { background: #e11d48; }
+    @media (max-width: 640px) {
+      .pwd-expiry-banner { flex-direction: column; align-items: flex-start; }
+      .peb-right { width: 100%; justify-content: space-between; }
+    }
+
     /* ── Empty ── */
     .empty-small { display: flex; align-items: center; gap: 8px; justify-content: center; padding: 24px; color: var(--c-muted); font-size: 13px; background: var(--c-gray-100); border-radius: var(--r); }
 
@@ -449,17 +550,19 @@ export class DashboardComponent implements OnInit {
   private authService      = inject(AuthService);
   private dashboardService = inject(DashboardService);
 
-  role        = this.authService.getRole();
-  today       = new Date();
-  currentYear = new Date().getFullYear();
-  loading     = signal(true);
-  ic          = IC;
+  role               = this.authService.getRole();
+  today              = new Date();
+  currentYear        = new Date().getFullYear();
+  loading            = signal(true);
+  ic                 = IC;
+  mustChangePassword = this.authService.getMustChangePassword();
+  daysRemaining      = this.authService.getDaysRemaining();
 
   // ===== MANAGER =====
   soldes                 = signal<any[]>([]);
   mgCongesAttente        = signal(0);
   mgAutorisationsAttente = signal(0);
-  mgAvancesAttente       = signal(0);
+  mgAugmentationsAttente = signal(0);
   mgEquipe               = signal(0);
   mgCongesListe          = signal<any[]>([]);
 
@@ -487,16 +590,16 @@ export class DashboardComponent implements OnInit {
 
   private loadManager(): void {
     forkJoin({
-      congesAttente:        this.dashboardService.getCongesEnAttenteManager(),
-      autorisationsAttente: this.dashboardService.getAutorisationsEnAttenteManager(),
-      avancesAttente:       this.dashboardService.getAvancesEnAttenteManager(),
-      soldes:               this.dashboardService.getSoldesConges(),
-      equipe:               this.dashboardService.getEquipe()
+      congesAttente:        this.dashboardService.getCongesEnAttenteManager().pipe(catchError(() => of([]))),
+      autorisationsAttente: this.dashboardService.getAutorisationsEnAttenteManager().pipe(catchError(() => of([]))),
+      augmentationsAttente: this.dashboardService.getAugmentationsEnAttenteManager().pipe(catchError(() => of([]))),
+      soldes:               this.dashboardService.getSoldesConges().pipe(catchError(() => of([]))),
+      equipe:               this.dashboardService.getEquipe().pipe(catchError(() => of([])))
     }).subscribe({
       next: (data) => {
         this.mgCongesAttente.set((data.congesAttente ?? []).length);
         this.mgAutorisationsAttente.set((data.autorisationsAttente ?? []).length);
-        this.mgAvancesAttente.set((data.avancesAttente ?? []).length);
+        this.mgAugmentationsAttente.set((data.augmentationsAttente ?? []).length);
         this.mgCongesListe.set(data.congesAttente ?? []);
         this.soldes.set(data.soldes ?? []);
         this.mgEquipe.set((data.equipe ?? []).length);

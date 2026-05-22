@@ -111,7 +111,7 @@ const SVG = {
           </div>
 
           <div class="form-group">
-            <label>Email <span class="optional">(optionnel)</span></label>
+            <label>Email <span class="optional"></span></label>
             <input type="email" formControlName="email"
                    placeholder="email@entreprise.tn"
                    [class.input-err]="inv('email')" />
@@ -129,7 +129,6 @@ const SVG = {
               <option value="EMPLOYE">Employé</option>
               <option value="MANAGER">Manager</option>
               <option value="RH">Responsable RH</option>
-              <option value="ADMIN">Administrateur</option>
             </select>
             <span class="err-txt" *ngIf="inv('role')">
               Champ requis
@@ -185,7 +184,7 @@ const SVG = {
           <span class="ib-icon"
                 [innerHTML]="svg.info | safeHtml">
           </span>
-          L'employé se connectera avec son <strong>CIN</strong>.
+          L'employé se connectera avec son <strong>Email</strong>.
           Un mot de passe temporaire sera envoyé par email.
         </div>
 
@@ -295,13 +294,13 @@ const SVG = {
             <td (click)="$event.stopPropagation()">
               <select class="role-sel"
                       [class]="'rs-' + u.role?.toLowerCase()"
-                      [value]="u.role"
+                      [disabled]="u.role === 'ADMIN'"
                       (change)="changeRole(
                         u.id, $any($event.target).value)">
-                <option value="EMPLOYE">Employé</option>
-                <option value="MANAGER">Manager</option>
-                <option value="RH">RH</option>
-                <option value="ADMIN">Admin</option>
+                <option *ngIf="u.role !== 'ADMIN'" value="EMPLOYE" [selected]="u.role === 'EMPLOYE'">Employé</option>
+                <option *ngIf="u.role !== 'ADMIN'" value="MANAGER" [selected]="u.role === 'MANAGER'">Manager</option>
+                <option *ngIf="u.role !== 'ADMIN'" value="RH"      [selected]="u.role === 'RH'">RH</option>
+                <option *ngIf="u.role === 'ADMIN'" value="ADMIN"   [selected]="u.role === 'ADMIN'">Admin</option>
               </select>
             </td>
 
@@ -374,17 +373,19 @@ const SVG = {
                   <span [innerHTML]="svg.key | safeHtml"></span>
                 </button>
 
-                <!-- 🗑️ Supprimer -->
+                <!-- 🗑️ Supprimer (masqué pour l'administrateur) -->
                 <button class="act-btn act-delete"
+                        *ngIf="u.role !== 'ADMIN'"
                         title="Supprimer le compte"
                         (click)="deleteTarget.set(u)">
                   <span [innerHTML]="svg.trash | safeHtml"></span>
                 </button>
                 <button class="act-btn act-warning"
-        title="Définir mot de passe"
-        (click)="openSetPassword(u)">
-  <span [innerHTML]="svg.key | safeHtml"></span>
-</button>
+                        *ngIf="u.role !== 'ADMIN'"
+                        title="Définir mot de passe"
+                        (click)="openSetPassword(u)">
+                  <span [innerHTML]="svg.key | safeHtml"></span>
+                </button>
 
               </div>
             </td>
@@ -1888,5 +1889,3 @@ export class AdminUsersComponent implements OnInit {
     });
   }
 }
-
-

@@ -9,10 +9,12 @@ import { forkJoin } from 'rxjs';
 import { CongeService } from '../../core/services/conge.service';
 import { AuthService }  from '../../core/services/auth.service';
 import { ProfilService } from '../../core/services/profil.service';
+import { PdfService }   from '../../core/services/pdf.service';
 import {
   DemandeConge, SoldeConge, StatutConge
 } from '../../core/models/conge.model';
 import { SafeHtmlPipe } from '../../shared/pipes/safe-html.pipe';
+import { environment } from '../../../environments/environment';
 type Tab = 'mes-demandes' | 'nouvelle' | 'en-attente'
          | 'toutes' | 'calendrier';
 
@@ -48,6 +50,7 @@ const SVG = {
   starFill: `<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`,
   home:     `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>`,
   filter:   `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>`,
+  download: `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>`,
 };
 
 @Component({
@@ -207,6 +210,14 @@ const SVG = {
                 </span>
                 <span class="dc-info-value">{{ c.motif }}</span>
               </div>
+              <div class="dc-info" *ngIf="c.fichierJustificatif">
+                <span class="dc-info-label">
+                  <span [innerHTML]="icons.folder | safeHtml"></span> Pièce justificative
+                </span>
+                <a class="justif-link" [href]="getJustificatifUrl(c.fichierJustificatif)" target="_blank" rel="noopener" (click)="$event.stopPropagation()">
+                  <span [innerHTML]="icons.download | safeHtml"></span> Voir le justificatif
+                </a>
+              </div>
             </div>
 
             <!-- Timeline workflow -->
@@ -268,6 +279,11 @@ const SVG = {
                     (click)="annulerConge(c.id)"
                     [disabled]="actionLoading()">
               <span [innerHTML]="icons.ban | safeHtml"></span> Annuler
+            </button>
+            <button class="btn btn-outline"
+                    *ngIf="c.statut === 'VALIDEE'"
+                    (click)="exportAttestationConge(c)">
+              <span [innerHTML]="icons.download | safeHtml"></span> Attestation PDF
             </button>
           </div>
         </div>
@@ -514,6 +530,14 @@ const SVG = {
               <div class="dc-info" *ngIf="c.motif">
                 <span class="dc-info-label">Motif</span>
                 <span class="dc-info-value">{{ c.motif }}</span>
+              </div>
+              <div class="dc-info" *ngIf="c.fichierJustificatif">
+                <span class="dc-info-label">
+                  <span [innerHTML]="icons.folder | safeHtml"></span> Pièce justificative
+                </span>
+                <a class="justif-link" [href]="getJustificatifUrl(c.fichierJustificatif)" target="_blank" rel="noopener" (click)="$event.stopPropagation()">
+                  <span [innerHTML]="icons.download | safeHtml"></span> Voir le justificatif
+                </a>
               </div>
             </div>
 
@@ -1095,6 +1119,22 @@ const SVG = {
       margin-top: 4px; font-size: 12px; color: var(--danger);
     }
 
+    .justif-link {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 6px 14px; border-radius: 8px;
+      background: linear-gradient(135deg, rgba(11,110,126,0.08), rgba(14,157,175,0.12));
+      color: var(--primary); font-size: 12px; font-weight: 600;
+      text-decoration: none; transition: all 0.25s ease;
+      border: 1px solid rgba(11,110,126,0.15);
+      svg { display: block; }
+      &:hover {
+        background: linear-gradient(135deg, var(--primary), var(--secondary));
+        color: white; transform: translateY(-1px);
+        box-shadow: 0 4px 14px rgba(11,110,126,0.25);
+        border-color: transparent;
+      }
+    }
+
     // ===== RH STATS =====
     .rh-stats { display: flex; gap: 16px; margin-bottom: 16px; flex-wrap: wrap; }
 
@@ -1547,7 +1587,9 @@ export class CongesComponent implements OnInit {
   private congeService  = inject(CongeService);
   private authService   = inject(AuthService);
   private profilService = inject(ProfilService);
+  private pdfService    = inject(PdfService);
   private fb            = inject(FormBuilder);
+  private apiUrl        = environment.apiUrl;
 
   readonly icons = SVG;
 
@@ -1836,6 +1878,11 @@ export class CongesComponent implements OnInit {
     });
   }
 
+  exportAttestationConge(conge: DemandeConge): void {
+    this.pdfService.exportAttestationConge(conge);
+    this.showToast('PDF généré avec succès !', 'success');
+  }
+
   valider(id: number, approuve: boolean): void {
     this.validationLoading.set(true);
     const service = this.congeService.validerManager(id, { approuve, commentaire: this.validationCommentaire });
@@ -2103,6 +2150,10 @@ export class CongesComponent implements OnInit {
 
   canAnnuler(c: DemandeConge): boolean {
     return ['BROUILLON','EN_ATTENTE_MANAGER','EN_ATTENTE_RH'].includes(c.statut);
+  }
+
+  getJustificatifUrl(path: string): string {
+    return this.apiUrl + path;
   }
 
   getFilteredMesDemandes(): DemandeConge[] {

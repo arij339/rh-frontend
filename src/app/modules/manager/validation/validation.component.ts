@@ -152,6 +152,18 @@ type TypeDemande = 'conges' | 'autorisations' | 'augmentations';
                 <span class="dd-label">Motif</span>
                 <span class="dd-val">{{ d.motif }}</span>
               </div>
+              <div class="dd-item" *ngIf="d.fichierJustificatif">
+                <span class="dd-label">Justificatif</span>
+                <a class="dd-justif-link"
+                   [href]="apiUrl + d.fichierJustificatif"
+                   target="_blank" rel="noopener">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                  </svg>
+                  Voir le document
+                </a>
+              </div>
               <div class="dd-item">
                 <span class="dd-label">Soumis le</span>
                 <span class="dd-val">{{ d.createdAt | date:'dd MMM yyyy' }}</span>
@@ -223,7 +235,7 @@ type TypeDemande = 'conges' | 'autorisations' | 'augmentations';
             <div class="dc-details">
               <div class="dd-item">
                 <span class="dd-label">Date</span>
-                <span class="dd-val">{{ d.date | date:'dd MMM yyyy' }}</span>
+                <span class="dd-val">{{ d.dateSortie | date:'dd MMM yyyy' }}</span>
               </div>
               <div class="dd-item">
                 <span class="dd-label">Heure sortie</span>
@@ -231,11 +243,11 @@ type TypeDemande = 'conges' | 'autorisations' | 'augmentations';
               </div>
               <div class="dd-item">
                 <span class="dd-label">Heure retour</span>
-                <span class="dd-val dd-highlight">{{ d.heureRetour }}</span>
+                <span class="dd-val dd-highlight">{{ d.heureRetourPrevue }}</span>
               </div>
               <div class="dd-item">
                 <span class="dd-label">Type</span>
-                <span class="dd-val">{{ d.type }}</span>
+                <span class="dd-val">{{ d.typeSortie }}</span>
               </div>
               <div class="dd-item" *ngIf="d.motif">
                 <span class="dd-label">Motif</span>
@@ -317,7 +329,7 @@ type TypeDemande = 'conges' | 'autorisations' | 'augmentations';
               </div>
               <div class="dd-item">
                 <span class="dd-label">Justification</span>
-                <span class="dd-val">{{ d.justification || '—' }}</span>
+                <span class="dd-val">{{ d.motif || '—' }}</span>
               </div>
               <div class="dd-item">
                 <span class="dd-label">Soumis le</span>
@@ -647,6 +659,19 @@ type TypeDemande = 'conges' | 'autorisations' | 'augmentations';
       color: var(--c-primary); font-size: 15px; font-weight: 800;
     }
     .dd-danger { color: var(--c-danger); }
+    .dd-justif-link {
+      display: inline-flex; align-items: center; gap: 5px;
+      font-size: 12px; font-weight: 600;
+      color: #2563eb;
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 6px;
+      padding: 4px 10px;
+      text-decoration: none;
+      width: fit-content;
+      transition: background .15s;
+      &:hover { background: #dbeafe; }
+    }
 
     /* Avis banner */
     .avis-banner {
@@ -784,7 +809,8 @@ type TypeDemande = 'conges' | 'autorisations' | 'augmentations';
 export class ValidationComponent implements OnInit {
 
   private http = inject(HttpClient);
-  private API = environment.apiUrl + '/api';
+  private API  = environment.apiUrl + '/api';
+  apiUrl       = environment.apiUrl;
 
   conges        = signal<any[]>([]);
   autorisations = signal<any[]>([]);
@@ -818,6 +844,11 @@ export class ValidationComponent implements OnInit {
         this.conges.set(d.conges ?? []);
         this.autorisations.set(d.autorisations ?? []);
         this.augmentations.set(d.augmentations ?? []);
+        // DEBUG — à supprimer après résolution
+        console.log('[DEBUG] conges reçus:', d.conges);
+        d.conges?.forEach((c: any) =>
+          console.log(`[DEBUG] demande ${c.id} fichierJustificatif=`, c.fichierJustificatif)
+        );
         this.loading.set(false);
       },
       error: () => {
@@ -897,5 +928,3 @@ export class ValidationComponent implements OnInit {
     setTimeout(() => this.toast.set({ show: false, message: '', type: 'success' }), 3200);
   }
 }
-
-

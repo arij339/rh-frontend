@@ -526,6 +526,135 @@ export class PdfService {
   }
 
   // ===================================================================
+  // PDF 3 — ATTESTATION DE CONGÉ VALIDÉ
+  // ===================================================================
+  exportAttestationConge(conge: any): void {
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const w   = doc.internal.pageSize.getWidth();
+
+    this.addHeader(doc, 'ATTESTATION DE CONGÉ', `N° ${conge.id || ''}`);
+    let y = 52;
+
+    // Titre central
+    doc.setFillColor(232, 247, 249);
+    doc.roundedRect(14, y, w - 28, 16, 4, 4, 'F');
+    doc.setDrawColor(...this.COLORS.secondary);
+    doc.setLineWidth(0.5);
+    doc.roundedRect(14, y, w - 28, 16, 4, 4, 'S');
+
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...this.COLORS.primary);
+    doc.text('ATTESTATION DE CONGÉ APPROUVÉ', w / 2, y + 10, { align: 'center' });
+    y += 24;
+
+    // Intro
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...this.COLORS.text);
+    doc.text(
+      'Nous soussignés, le Service des Ressources Humaines, attestons avoir accordé',
+      14, y
+    );
+    y += 6;
+    doc.text(
+      'le congé aux conditions suivantes :',
+      14, y
+    );
+    y += 12;
+
+    // Info employé
+    y = this.addSectionTitle(doc, 'Informations de l\'Employé', y);
+    y = this.addInfoBox(doc, [
+      { label: 'Nom & Prénom',  value: `${conge.employeNom || ''} ${conge.employePrenom || ''}` },
+      { label: 'Matricule',     value: conge.employeMatricule || '—' },
+      { label: 'Département',   value: conge.employeDepartement || '—' }
+    ], 14, y, w - 28);
+
+    // Info congé
+    y = this.addSectionTitle(doc, 'Détails du Congé', y);
+
+    const typeLabels: Record<string, string> = {
+      'ANNUEL':       'Congé Annuel',
+      'MALADIE':      'Congé Maladie',
+      'EXCEPTIONNEL': 'Congé Exceptionnel',
+      'SANS_SOLDE':   'Congé Sans Solde',
+      'MATERNITE':    'Congé Maternité',
+      'PATERNITE':    'Congé Paternité'
+    };
+
+    y = this.addInfoBox(doc, [
+      { label: 'Type de congé',   value: typeLabels[conge.typeConge] || conge.typeConge || '—' },
+      { label: 'Date de début',   value: this.formatDate(conge.dateDebut) },
+      { label: 'Date de fin',     value: this.formatDate(conge.dateFin) },
+      { label: 'Jours ouvrables', value: `${conge.joursOuvrables || conge.nombreJours || 0} jour(s)` },
+      { label: 'Motif',           value: conge.motif || '—' }
+    ], 14, y, w - 28);
+
+    // Validation
+    y = this.addSectionTitle(doc, 'Validation', y);
+    y = this.addInfoBox(doc, [
+      { label: 'Commentaire Manager', value: conge.commentaireManager || '—' },
+      { label: 'Commentaire RH',      value: conge.commentaireRh || conge.commentaireRH || '—' },
+      { label: 'Date de demande',     value: this.formatDateTime(conge.createdAt) }
+    ], 14, y, w - 28);
+
+    // Statut badge
+    y += 4;
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...this.COLORS.text);
+    doc.text('Statut : ', 14, y + 5);
+    this.addBadge(doc, 'VALIDÉE', 38, y + 5, this.COLORS.success);
+    y += 16;
+
+    // Signatures
+    if (y > 220) { doc.addPage(); y = 20; }
+
+    doc.setFillColor(...this.COLORS.gray);
+    doc.rect(14, y, w - 28, 40, 'F');
+
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...this.COLORS.text);
+
+    // Signature employé
+    doc.text("L'Employé(e)", 35, y + 8, { align: 'center' });
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...this.COLORS.textLight);
+    doc.text(`${conge.employeNom || ''} ${conge.employePrenom || ''}`, 35, y + 14, { align: 'center' });
+    doc.setDrawColor(...this.COLORS.secondary);
+    doc.line(14, y + 33, 80, y + 33);
+    doc.setFontSize(7);
+    doc.text('Signature', 47, y + 38, { align: 'center' });
+
+    // Signature RH
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...this.COLORS.text);
+    doc.text('Le Responsable RH', w - 35, y + 8, { align: 'center' });
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...this.COLORS.textLight);
+    doc.text('Service RH', w - 35, y + 14, { align: 'center' });
+    doc.line(w - 80, y + 33, w - 14, y + 33);
+    doc.setFontSize(7);
+    doc.text('Signature & Cachet', w - 47, y + 38, { align: 'center' });
+
+    // Note légale
+    y += 50;
+    doc.setFontSize(7.5);
+    doc.setFont('helvetica', 'italic');
+    doc.setTextColor(...this.COLORS.textLight);
+    doc.text(
+      '* Ce document est généré automatiquement par le système RH Manager et constitue une attestation officielle de congé.',
+      w / 2, y, { align: 'center' }
+    );
+
+    this.addFooter(doc);
+    doc.save(`Attestation_Conge_${conge.employeNom}_${conge.dateDebut}.pdf`);
+  }
+
+  // ===================================================================
   // HELPERS
   // ===================================================================
   private formatDate(date: string | null): string {

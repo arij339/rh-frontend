@@ -863,6 +863,27 @@ type ActiveTab = 'overview' | 'conges' | 'rh-social' | 'effectifs';
     /* ── Misc ── */
     .spinner { width: 16px; height: 16px; display: inline-block; border: 2.5px solid rgba(255,255,255,0.35); border-top-color: white; border-radius: 50%; animation: spin 0.75s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Animations (Design Amélioré) ── */
+    @keyframes fadeSlideUp {
+      from { opacity: 0; transform: translateY(15px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .kpi-card { animation: fadeSlideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) backwards; }
+    .kpi-row .kpi-card:nth-child(1) { animation-delay: 0.05s; }
+    .kpi-row .kpi-card:nth-child(2) { animation-delay: 0.10s; }
+    .kpi-row .kpi-card:nth-child(3) { animation-delay: 0.15s; }
+    .kpi-row .kpi-card:nth-child(4) { animation-delay: 0.20s; }
+    .kpi-row .kpi-card:nth-child(5) { animation-delay: 0.25s; }
+    .kpi-row .kpi-card:nth-child(6) { animation-delay: 0.30s; }
+
+    .chart-card { animation: fadeSlideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) backwards; }
+    .charts-grid .chart-card:nth-child(1) { animation-delay: 0.15s; }
+    .charts-grid .chart-card:nth-child(2) { animation-delay: 0.25s; }
+    .charts-grid .chart-card:nth-child(3) { animation-delay: 0.35s; }
+
+    .section-card { animation: fadeSlideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) backwards; animation-delay: 0.3s; }
+    .alerts-section { animation: fadeSlideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) backwards; animation-delay: 0.4s; }
   `]
 })
 export class AnalyticsComponent implements OnInit, AfterViewInit {
@@ -1014,8 +1035,8 @@ export class AnalyticsComponent implements OnInit, AfterViewInit {
     this.tauxResolutionReclamations.set(reclamations.length > 0 ? Math.round((recResolues / reclamations.length) * 100) : 0);
 
     // Avances
-    // FIX : le statut réel côté backend est EN_ATTENTE_RH (pas EN_ATTENTE)
-    const avAttente = avances.filter((a: any) => a.statut === 'EN_ATTENTE_RH');
+    // FIX : Inclut le statut MODIFIEE_PAR_RH qui est en attente de l'employé
+    const avAttente = avances.filter((a: any) => ['EN_ATTENTE_RH', 'MODIFIEE_PAR_RH'].includes(a.statut));
     this.avancesEnAttente.set(avAttente.length);
     this.montantTotalAvances.set(avAttente.reduce((s: number, a: any) => s + (a.montantDemande || 0), 0));
 

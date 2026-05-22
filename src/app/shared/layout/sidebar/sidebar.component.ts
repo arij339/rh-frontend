@@ -590,11 +590,11 @@ export class SidebarComponent {
     icon:  IC.validation
   },
 
-  // ─── PROFIL : tous sauf ADMIN ────────────────────────
+  // ─── PROFIL : tous ────────────────────────
   {
     label:   'Mon Profil',
     route:   '/profil',
-    roles:   ['EMPLOYE', 'MANAGER', 'RH'],
+    roles:   ['EMPLOYE', 'MANAGER', 'RH', 'ADMIN'],
     icon:    IC.profil,
     section: 'Compte'
   },

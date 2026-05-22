@@ -1,5 +1,5 @@
 import { Component, inject, OnInit, OnDestroy, signal } from '@angular/core';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, ReactiveFormsModule, FormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { AuthService } from '../../../core/services/auth.service';
@@ -21,7 +21,7 @@ const IC = {
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [ReactiveFormsModule, CommonModule, SafeHtmlPipe],
+  imports: [ReactiveFormsModule, FormsModule, CommonModule, SafeHtmlPipe],
   template: `
 <div class="page">
 
@@ -155,8 +155,25 @@ const IC = {
             </div>
           }
 
+          <!-- ── MOT DE PASSE TEMPORAIRE EXPIRÉ ── -->
+          @if (tempPasswordExpired()) {
+            <div class="alert-temp-expired">
+              <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"
+                   stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                <circle cx="12" cy="16" r="1" fill="currentColor" stroke="none"/>
+              </svg>
+              <div class="ate-body">
+                <strong>Compte bloqué — mot de passe temporaire expiré</strong>
+                <span>Votre délai de 7 jours pour changer votre mot de passe est écoulé.
+                Veuillez contacter votre administrateur pour débloquer votre compte.</span>
+              </div>
+            </div>
+          }
+
           <!-- ── ERREUR SIMPLE ── -->
-          @if (!isLocked() && errorMsg() && failedCount() === 0) {
+          @if (!isLocked() && !tempPasswordExpired() && errorMsg() && failedCount() === 0) {
             <div class="alert-error">
               <span [innerHTML]="ic.alert | safeHtml"></span>
               {{ errorMsg() }}
@@ -190,6 +207,27 @@ const IC = {
 
       </div>
     </div>
+
+    <!-- ── 2FA STEP ── -->
+    @if (twoFactorRequired()) {
+      <div class="twofa-overlay">
+        <div class="tfa-icon">
+          <svg width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/><circle cx="12" cy="16" r="1" fill="currentColor" stroke="none"/></svg>
+        </div>
+        <h3>Vérification en deux étapes</h3>
+        <p>Ouvrez <strong>Google Authenticator</strong> et entrez le code à 6 chiffres.</p>
+        <div class="tfa-input-wrap">
+          <input type="text" inputmode="numeric" maxlength="6" placeholder="000 000"
+                 class="tfa-input" [(ngModel)]="twoFactorCode" (keyup.enter)="onVerify2FA()" />
+        </div>
+        <div class="tfa-error" *ngIf="twoFaError()">{{ twoFaError() }}</div>
+        <button class="btn-submit tfa-btn" (click)="onVerify2FA()" [disabled]="twoFaLoading()">
+          <span *ngIf="!twoFaLoading()">Vérifier le code</span>
+          <span *ngIf="twoFaLoading()" class="spinner"></span>
+        </button>
+        <button class="tfa-back" (click)="twoFactorRequired.set(false)">← Retour à la connexion</button>
+      </div>
+    }
 
   </div>
 </div>
@@ -512,6 +550,20 @@ const IC = {
       font-weight: 500;
     }
 
+    /* ── MOT DE PASSE TEMPORAIRE EXPIRÉ ── */
+    .alert-temp-expired {
+      display: flex; align-items: flex-start; gap: 12px;
+      background: #fff1f2; border: 1.5px solid #f43f5e;
+      color: #be123c; padding: 14px 16px;
+      border-radius: var(--radius); margin-bottom: 16px;
+      animation: slideDown 0.3s ease;
+    }
+    .alert-temp-expired svg { flex-shrink: 0; margin-top: 2px; color: #f43f5e; }
+    .ate-body { display: flex; flex-direction: column; gap: 4px; }
+    .ate-body strong { font-size: 13.5px; font-weight: 700; color: #9f1239; }
+    .ate-body span { font-size: 12.5px; line-height: 1.5; color: #be123c; }
+    @keyframes slideDown { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+
     /* ── VERROUILLAGE ── */
     .alert-locked {
       display: flex;
@@ -692,6 +744,38 @@ const IC = {
       100%{ transform: translateX(0); opacity: 1; }
     }
 
+    /* ── 2FA OVERLAY ── */
+    .twofa-overlay {
+      position: absolute; inset: 0; background: white; border-radius: inherit;
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; gap: 16px; padding: 40px 32px;
+      text-align: center; z-index: 20; animation: fadeUp 0.25s ease both;
+    }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    .tfa-icon {
+      width: 72px; height: 72px; border-radius: 20px;
+      background: linear-gradient(135deg,#eff6ff,#dbeafe);
+      border: 1.5px solid #93c5fd; color: #2563eb;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .twofa-overlay h3 { font-size: 20px; font-weight: 700; color: #0f172a; margin: 0; }
+    .twofa-overlay p { font-size: 14px; color: #64748b; line-height: 1.5; margin: 0; max-width: 280px; }
+    .tfa-input-wrap { width: 100%; max-width: 220px; }
+    .tfa-input {
+      width: 100%; text-align: center; font-size: 30px; font-weight: 700;
+      letter-spacing: 14px; padding: 14px 10px; border-radius: 14px;
+      border: 2px solid #e2e8f0; outline: none; color: #0f172a;
+      transition: border-color 0.2s; box-sizing: border-box;
+    }
+    .tfa-input:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+    .tfa-error { color: #ef4444; font-size: 13px; font-weight: 500; }
+    .tfa-btn { margin-top: 4px; }
+    .tfa-back {
+      background: none; border: none; color: #94a3b8; font-size: 13px;
+      cursor: pointer; text-decoration: none; transition: color 0.2s;
+    }
+    .tfa-back:hover { color: #64748b; }
+
     /* ── RESPONSIVE ── */
     @media (max-width: 680px) {
       .card {
@@ -735,15 +819,22 @@ export class LoginComponent implements OnDestroy, OnInit {
 
   ic = IC;
 
-  loginMode         = signal<'cin' | 'email'>('email');
-  loading           = signal(false);
-  errorMsg          = signal('');
-  showPassword      = signal(false);
-  showChangePwdHint = signal(false);
-  isLocked          = signal(false);
-  remainingSeconds  = signal(0);
-  failedCount       = signal(0);
-  currentYear       = new Date().getFullYear();
+  loginMode            = signal<'cin' | 'email'>('email');
+  loading              = signal(false);
+  errorMsg             = signal('');
+  showPassword         = signal(false);
+  showChangePwdHint    = signal(false);
+  isLocked             = signal(false);
+  remainingSeconds     = signal(0);
+  failedCount          = signal(0);
+  tempPasswordExpired  = signal(false);
+  currentYear          = new Date().getFullYear();
+
+  twoFactorRequired = signal(false);
+  twoFactorToken    = signal('');
+  twoFactorCode     = '';
+  twoFaLoading      = signal(false);
+  twoFaError        = signal('');
 
   private lockTimer: any = null;
 
@@ -839,6 +930,7 @@ export class LoginComponent implements OnDestroy, OnInit {
     this.loading.set(true);
     this.errorMsg.set('');
     this.showChangePwdHint.set(false);
+    this.tempPasswordExpired.set(false);
 
     this.auth.login({
       identifiant: this.form.value.identifiant!,
@@ -846,6 +938,11 @@ export class LoginComponent implements OnDestroy, OnInit {
     }).subscribe({
       next: (res) => {
         this.loading.set(false);
+        if (res.requiresTwoFactor) {
+          this.twoFactorRequired.set(true);
+          this.twoFactorToken.set(res.twoFactorToken ?? '');
+          return;
+        }
         if (res.mustChangePassword) this.showChangePwdHint.set(true);
         const role = res.role;
         if (role === 'ADMIN')      this.router.navigate(['/dashboard']);
@@ -855,6 +952,12 @@ export class LoginComponent implements OnDestroy, OnInit {
       error: (err: any) => {
         this.loading.set(false);
         const msg: string = err?.error?.message ?? 'Identifiant ou mot de passe incorrect.';
+
+        // ── Mot de passe temporaire expiré — blocage admin requis ──
+        if (err?.status === 423 && msg === 'TEMP_PASSWORD_EXPIRED') {
+          this.tempPasswordExpired.set(true);
+          return;
+        }
 
         // ── Compte verrouillé (après 5 tentatives) ──
         if (err?.status === 423 || msg.toLowerCase().includes('verrouillé')) {
@@ -869,7 +972,30 @@ export class LoginComponent implements OnDestroy, OnInit {
           this.failedCount.set(5 - parseInt(match[1]));
         }
 
+        this.tempPasswordExpired.set(false);
         this.errorMsg.set(msg);
+      }
+    });
+  }
+
+  onVerify2FA(): void {
+    if (!this.twoFactorCode || this.twoFactorCode.length < 6) {
+      this.twoFaError.set('Entrez le code à 6 chiffres de votre application.');
+      return;
+    }
+    this.twoFaLoading.set(true);
+    this.twoFaError.set('');
+    this.auth.verify2FA(this.twoFactorToken(), this.twoFactorCode).subscribe({
+      next: (res) => {
+        this.twoFaLoading.set(false);
+        if (res.mustChangePassword) this.showChangePwdHint.set(true);
+        const role = res.role;
+        if (role === 'ADMIN' || role === 'RH') this.router.navigate(['/dashboard']);
+        else this.router.navigate(['/profil']);
+      },
+      error: (err) => {
+        this.twoFaLoading.set(false);
+        this.twoFaError.set(err?.error?.message ?? 'Code incorrect.');
       }
     });
   }
